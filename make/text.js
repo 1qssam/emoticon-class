@@ -68,7 +68,21 @@ function linkFonts(){
     ff.load().then(x => { document.fonts.add(x); setTimeout(drawStage, 50); }).catch(() => {});
   });
 }
-const fontOf = name => (C.TEXT_FONTS || []).find(f => f.name === name) || (C.TEXT_FONTS || [])[0] || { name: "Pretendard", weight: 700 };
+/* 내 글꼴: 학생이 올린 글꼴 파일 (이 브라우저 안에서만 씀, 새로 고치면 다시 올려야 함) */
+let USER_FONTS = [];
+const allFonts = () => (C.TEXT_FONTS || []).concat(USER_FONTS);
+const fontOf = name => allFonts().find(f => f.name === name) || allFonts()[0] || { name: "Pretendard", weight: 700 };
+const hasFont = name => !name || allFonts().some(f => f.name === name);
+async function addUserFont(file){
+  const base = file.name.replace(/\.[^.]+$/, "").trim() || "내 글꼴";
+  const fam = "내글꼴 " + base;
+  if (!USER_FONTS.some(f => f.name === fam)){
+    const ff = new FontFace(fam, await file.arrayBuffer());
+    await ff.load(); document.fonts.add(ff);
+    USER_FONTS.push({ name: fam, label: base + " (내 글꼴)", weight: 400, user: true });
+  }
+  return fam;
+}
 /* 굵기: 글씨마다 고른 굵기(T.weight)가 그 글꼴에 있으면 그것, 없으면 글꼴의 처음 굵기 */
 const weightsOf = f => (f.weights && f.weights.length ? f.weights : [f.weight || 400]);
 const weightOf = T => { const f = fontOf(T.font), w = +T.weight; return weightsOf(f).includes(w) ? w : (f.weight || 400); };
@@ -203,14 +217,17 @@ const HEX = /^#[0-9a-f]{6}$/i;
 function editorHtml(){
   const esc = ui().esc, P = page(), list = P ? textsOf(P.key) : [], T = list[sel];
   if (!T) return `<p class="sub2">${P ? "그림 위의 글씨를 누르거나 '+ 글씨 추가'를 눌러 주세요." : "먼저 PSD나 PNG를 올려 주세요."}</p>`;
-  const F = C.TEXT_FONTS || [], cf = fontOf(T.font);
+  const F = allFonts(), cf = fontOf(T.font);
   const ffam = f => esc(`font-family:"${f.name}", Pretendard, sans-serif;font-weight:${f.weight || 400}`);
   const fonts = F.map(f => `<li data-font="${esc(f.name)}" style="${ffam(f)}" ${f.name === cf.name ? 'class="on"' : ""}>${esc(f.label || f.name)} <span>가나다 ABC 123</span></li>`).join("");
   const al = T.al || "c";
   return `
       <div class="tx-fld"><h3>글자</h3><textarea id="txT" rows="2">${esc(T.t)}</textarea></div>
       <div class="tx-fld"><h3>글꼴</h3><div class="fsel" id="txFont"><button class="fsel-btn" id="txFontBtn" style="${ffam(cf)}">${esc(cf.label || cf.name)}<span class="arr">▾</span></button>
-        <ul class="fsel-list" id="txFontList" hidden>${fonts}</ul></div>
+        <ul class="fsel-list" id="txFontList" hidden>${fonts}
+          <li class="fsel-add" id="txFontAdd">+ 내 글꼴 올리기 <span>내 PC의 글꼴 파일(TTF·OTF·WOFF) — 상업적으로 써도 되는 글꼴인지 꼭 직접 확인해 주세요</span></li></ul>
+        <input type="file" id="txFontFile" accept=".ttf,.otf,.woff,.woff2" hidden></div>
+        ${hasFont(T.font) ? "" : `<p class="note warn" style="margin-top:6px">이 글씨의 글꼴(${esc(String(T.font).replace(/^내글꼴 /, ""))})을 다시 올려 주세요. 새로 고치면 내 글꼴은 다시 올려야 해요.</p>`}
         ${weightsOf(cf).length > 1 ? `<div class="tx-wt"><span>굵기</span><select id="txWeight">${weightsOf(cf).map(w =>
           `<option value="${w}" ${w === weightOf(T) ? "selected" : ""}>${esc((C.WEIGHT_NAMES || {})[w] || w)} (${w})</option>`).join("")}</select></div>` : ""}</div>
       <div class="tx-fld"><h3>크기</h3><div class="tx-size"><input type="range" id="txSize" min="12" max="300" value="${T.size}">
@@ -447,6 +464,15 @@ function bindEditor(){
     const ed = document.getElementById("txEd"); ed.innerHTML = editorHtml(); bindEditor();
   });
   if ($("txWeight")) $("txWeight").onchange = () => { snap(); T.weight = +$("txWeight").value; save(); };
+  $("txFontAdd").onclick = () => $("txFontFile").click();
+  $("txFontFile").onchange = async () => {
+    const f = $("txFontFile").files[0]; $("txFontFile").value = ""; if (!f) return;
+    try {
+      const fam = await addUserFont(f);
+      snap(); T.font = fam; T.weight = 400; save();
+      const ed = document.getElementById("txEd"); ed.innerHTML = editorHtml(); bindEditor();
+    } catch (err){ alert("글꼴 파일을 읽지 못했어요. TTF·OTF·WOFF 파일인지 확인해 주세요."); }
+  };
   $("txRot").oninput = () => { const v = +$("txRot").value; if (!isNaN(v)){ T.rot = Math.max(-180, Math.min(180, v)); save(); } };
   $("txVert").onchange = () => { snap(); const b = textBox(T); T.vert = $("txVert").checked; placeBox(T, b.x, b.y); save(); };
   $("txSize").oninput = () => { T.size = +$("txSize").value; $("txSizeN").value = T.size; save(); };

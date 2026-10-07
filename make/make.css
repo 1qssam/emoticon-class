@@ -523,3 +523,5 @@ body.fit #qbody > .compose{flex:1;min-height:0;display:grid;grid-template-column
 .tx-wt{display:flex;align-items:center;gap:8px;margin-top:8px}
 .tx-wt span{font-size:15px;color:var(--muted);flex:none}
 .tx-wt select{flex:1;font-family:inherit;font-size:16px;border:1.5px solid #d6d4cd;border-radius:9px;padding:6px 8px}
+.fsel-list li.fsel-add{font-family:Pretendard,sans-serif;font-size:16px;font-weight:700;color:#1d5fd1;border-top:1px solid var(--line);border-radius:0;margin-top:4px;padding-top:10px}
+.fsel-list li.fsel-add span{font-weight:400;font-size:13px;color:var(--muted)}

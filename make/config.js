@@ -173,14 +173,21 @@ window.EC_CONFIG = {
        google: 구글 폰트 — fonts.google.com 주소에 쓰는 이름 (띄어쓰기는 +)      예) google: "Black+Han+Sans"
        css   : 글꼴을 불러오는 CSS 주소 (눈누 등에서 웹폰트 <link> 주소를 줄 때)   예) css: "https://…/font.css"
        url   : 글꼴 파일 주소 (.woff2 / .woff / .ttf)                            예) url: "https://…/font.woff2"
-     Pretendard는 페이지에 이미 들어 있어서 셋 다 없어도 됩니다. */
+     Pretendard는 페이지에 이미 들어 있어서 셋 다 없어도 됩니다.
+     여기 없는 글꼴은 학생이 13단계에서 '내 글꼴 올리기'로 자기 PC의 글꼴 파일을 올려 쓸 수 있습니다 (저작권은 본인이 확인). */
   TEXT_FONTS: [
-    { name: "Pretendard",       label: "프리텐다드",      weight: 800, weights: [300, 400, 500, 600, 700, 800, 900] },
-    { name: "Jua",              label: "주아",            weight: 400, google: "Jua" },
-    { name: "Do Hyeon",         label: "도현",            weight: 400, google: "Do+Hyeon" },
-    { name: "Black Han Sans",   label: "검은고딕",        weight: 400, google: "Black+Han+Sans" },
-    { name: "Gaegu",            label: "개구",            weight: 700, weights: [300, 400, 700], google: "Gaegu:wght@300;400;700" },
-    { name: "Nanum Pen Script", label: "나눔손글씨 펜",   weight: 400, google: "Nanum+Pen+Script" },
+    /* 모두 상업적으로 써도 되는 글꼴 (프리텐다드·구글 폰트 = SIL 오픈 폰트 라이선스, 2026-10-08 확인) */
+    { name: "Pretendard",     label: "프리텐다드",  weight: 800, weights: [300, 400, 500, 600, 700, 800, 900] },
+    { name: "Asta Sans",      label: "아스타산스",  weight: 700, weights: [300, 400, 500, 600, 700, 800], google: "Asta+Sans:wght@300..800" },
+    { name: "Nanum Gothic",   label: "나눔고딕",    weight: 800, weights: [400, 700, 800], google: "Nanum+Gothic:wght@400;700;800" },
+    { name: "Noto Serif KR",  label: "노토세리프",  weight: 700, weights: [200, 300, 400, 500, 600, 700, 800, 900], google: "Noto+Serif+KR:wght@200..900" },
+    { name: "Gaegu",          label: "개구",        weight: 700, weights: [300, 400, 700], google: "Gaegu:wght@300;400;700" },
+    { name: "Gamja Flower",   label: "감자꽃",      weight: 400, google: "Gamja+Flower" },
+    { name: "Jua",            label: "주아",        weight: 400, google: "Jua" },
+    { name: "Do Hyeon",       label: "도현",        weight: 400, google: "Do+Hyeon" },
+    { name: "Gowun Batang",   label: "고운바탕",    weight: 700, weights: [400, 700], google: "Gowun+Batang:wght@400;700" },
+    { name: "Poor Story",     label: "푸어스토리",  weight: 400, google: "Poor+Story" },
+    { name: "Orbit",          label: "오르빗",      weight: 400, google: "Orbit" },
   ],
   /* '+ 글씨 추가'를 누를 때 처음 모양 (글자색·테두리색·테두리 두께 px, 정렬 c = 가운데) */
   /* 굵기 이름 (굵기 칸에 보이는 글) */
