@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>기획시트 · 원큐쌤의 이모티콘 클래스</title>
+<link rel="icon" type="image/png" sizes="32x32" href="https://1qssam.github.io/emoticon-rank/1qssam-32.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.min.css">
+<style>
+  html,body{margin:0;background:#e9e8e3}
+  body{font-family:Pretendard,"Malgun Gothic",sans-serif}
+  canvas{display:block;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,.12);background:#fff}
+  .pad{padding:12px}
+</style>
+</head>
+<body>
+<!-- 기획 페이지에서 고치면 이 창도 저절로 바뀝니다 (같은 브라우저 안에서) -->
+<div class="pad"><canvas id="cv"></canvas></div>
+<script src="config.js"></script>
+<script src="core.js"></script>
+<script src="shop.js"></script>
+<script src="sheet.js"></script>
+<script>
+const cv = document.getElementById("cv");
+let busy = false, again = false;
+async function draw(){
+  if (busy){ again = true; return; }
+  busy = true;
+  const st = EC.load();
+  await EC.sheetFonts(st);
+  const img = await EC.mainImage(st);
+  const cssW = Math.min(window.innerWidth - 24, (window.innerHeight - 24) * EC.SHEET.W / EC.SHEET.H);
+  const dpr = window.devicePixelRatio || 1, s = cssW * dpr / EC.SHEET.W;
+  cv.width = Math.round(EC.SHEET.W * s); cv.height = Math.round(EC.SHEET.H * s);
+  cv.style.width = cssW + "px";
+  EC.drawSheet(cv.getContext("2d"), st, s, img);
+  busy = false;
+  if (again){ again = false; draw(); }
+}
+window.addEventListener("storage", e => { if (e.key === EC.KEY) draw(); });
+window.addEventListener("resize", draw);
+draw();
+</script>
+</body>
+</html>
