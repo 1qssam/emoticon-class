@@ -66,8 +66,7 @@ function body(){
   return `<div class="psd">
     <section class="ps-side">
       <input type="file" id="exFile" accept=".psd" hidden>
-      <div class="ps-up"><button class="btn solid" id="exDrop">완성한 PSD 올리기</button>
-        <span class="sub2">OGQ용(740×640), 카카오용(360×360)을 각각 올리면 돼요 (끌어다 놓아도 돼요)</span></div>
+      <div class="drop up-drop" id="exDrop" role="button" tabindex="0"><span><b>완성한 PSD</b>를<br>끌어다 놓거나 눌러서 고르세요<br><small>OGQ용(740×640), 카카오용(360×360)을 각각 올리면 돼요</small></span></div>
       ${note ? `<p class="note ${note.kind}">${esc(note.text)}</p>` : ""}
       ${info ? `<p class="sub2">${esc(info)}</p>` : ""}
       <div class="ps-fld"><h3>받을 ZIP 이름</h3><div class="ps-fname"><input id="exName" value="${esc(base)}" placeholder="이모티콘"><span>.zip</span></div></div>
@@ -108,6 +107,7 @@ function bind(){
   const $ = ui().$;
   EC.loadAgPsd().catch(() => {});
   $("exDrop").onclick = () => $("exFile").click();
+  $("exDrop").onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); $("exFile").click(); } };
   $("exFile").onchange = () => { const f = $("exFile").files[0]; $("exFile").value = ""; load(f); };
   const isFile = e => e.dataTransfer && [...e.dataTransfer.types].includes("Files");
   [$("exDrop"), document.querySelector(".ps-main")].forEach(el => {

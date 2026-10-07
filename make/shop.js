@@ -3,7 +3,7 @@
    · pc: 940×320 — 왼쪽 정사각형 그림, 오른쪽 상품명·가격·버튼
    · mobile: 430×290 — 위에 가로로 긴 그림 칸, 아래 상품명·가격
    · 그림 뒤 배경은 설정의 SHOP.bg (카카오톡 채팅방 기본색과 비슷한 색)
-   · 작가명·시리즈명은 9단계에서 적었을 때만 상품명 아래에 회색으로 ("작가명 · 시리즈명")
+   · 9단계에서 적었을 때만: 시리즈명은 상품명 위에 회색으로("시리즈명 ›"), 작가명은 버튼 아래에
    ════════════════════════════════════════════════ */
 (function(){
 const EC = window.EC, C = window.EC_CONFIG;
@@ -62,13 +62,16 @@ EC.drawShop = (ctx, st, mode, img, x, y, s) => {
     rr(ctx, 8, 16, 280, 280, 16); ctx.fillStyle = C.SHOP.bg; ctx.fill();
     if (img){ const z = Math.round(280 * (C.SHOP.imgRatio || 0.64)); ctx.drawImage(img, 8 + (280 - z) / 2, 16 + (280 - z) / 2, z, z); }
     ctx.fillStyle = "#eeeeee"; ctx.fillRect(336, 16, 1, 280);
+    /* 위에서부터: 시리즈명 › / 상품명 / 가격 / 버튼 / 작가명 (카카오 PC 상품 화면 순서) */
+    const series = String(st.series || "").trim(), author = String(st.author || "").trim();
+    let ty = 26;
+    if (series){ ctx.font = `500 15px ${FONT}`; ctx.fillStyle = "#8a8a8a"; ctx.fillText(lines(ctx, series, 420, 1)[0] + " ›", 384, ty); ty += 34; }
+    else ty = 44;
     ctx.font = `700 21px ${FONT}`; ctx.fillStyle = tColor;
     const ls = lines(ctx, title, 440, 2);
-    ls.forEach((l, i) => ctx.fillText(l, 384, 48 + i * 30));
-    let ty = 48 + (ls.length - 1) * 30;
-    const by2 = [st.author, st.series].map(x => String(x || "").trim()).filter(Boolean).join(" · ");
-    if (by2){ ty += 28; ctx.font = `500 15px ${FONT}`; ctx.fillStyle = "#8a8a8a"; ctx.fillText(lines(ctx, by2, 440, 1)[0], 384, ty); }
-    const py = ty + 44;
+    ls.forEach((l, i) => ctx.fillText(l, 384, ty + i * 30));
+    ty += (ls.length - 1) * 30;
+    const py = ty + 42;
     ctx.font = `700 23px ${FONT}`; ctx.fillStyle = "#111"; ctx.fillText(priceOf(st), 384, py);
     const by = py + 26;
     rr(ctx, 384, by, 455, 52, 10); ctx.fillStyle = "#fee500"; ctx.fill();
@@ -79,6 +82,7 @@ EC.drawShop = (ctx, st, mode, img, x, y, s) => {
     rr(ctx, 615, by + 60, 224, 52, 10); ctx.fillStyle = "#1b1b1b"; ctx.fill();
     ctx.fillStyle = "#fff"; ctx.fillText("구매", 615 + 112, by + 92);
     ctx.textAlign = "left";
+    if (author){ ctx.font = `700 19px ${FONT}`; ctx.fillStyle = "#111"; ctx.fillText(lines(ctx, author, 455, 1)[0], 384, by + 112 + 34); }
   } else {
     rr(ctx, 8, 8, 414, 165, 10); ctx.fillStyle = C.SHOP.bg; ctx.fill();
     if (img){ const z = Math.round(165 * 0.67); ctx.drawImage(img, 215 - z / 2, 8 + (165 - z) / 2, z, z); }

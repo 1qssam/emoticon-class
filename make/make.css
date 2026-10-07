@@ -490,3 +490,18 @@ body.fit #qbody > .compose{flex:1;min-height:0;display:grid;grid-template-column
 .csay{font-family:inherit;font-size:16px;color:#fff;background:transparent;border:0;border-bottom:1px dashed #8d8b85;width:12em;max-width:100%;padding:2px 4px}
 .csay:focus{outline:none;border-bottom-color:#fff}
 .cmain{font-size:13px;color:var(--muted);white-space:nowrap}
+/* 목록이 길어져도 줄이 납작해지지 않게 (세로로 쌓는 목록의 항목은 줄어들지 않음) */
+.clist > li, .tx-pages ol > li{flex:none}
+
+/* 12~14단계 파일 올리는 칸 (8단계 대표 이미지 칸과 같은 모양, 낮게) */
+.drop.up-drop{width:100%;height:auto;min-height:0;padding:16px 12px;line-height:1.55;font-size:16px;word-break:keep-all}
+.drop.up-drop small{font-size:14px}
+.up-alt{width:100%;margin-top:8px;font-size:15px;padding:8px}
+.tx-pages .note{font-size:14px;padding:8px 10px;margin:0 0 8px;flex:none}
+.tx-size{display:flex;align-items:center;gap:10px}
+.tx-size input[type=range]{flex:1;min-width:0}
+.tx-2{grid-template-columns:1fr 1fr}
+.tx-color{display:flex;align-items:center;gap:6px}
+.tx-hex{width:100%;min-width:0;font-family:inherit;font-size:16px;border:1.5px solid #d6d4cd;border-radius:8px;padding:6px 8px;text-transform:uppercase}
+.tx-hex:focus{outline:none;border-color:var(--ink)}
+.tx-color input[type=color]{width:40px;height:36px;flex:none;border:1.5px solid #d6d4cd;border-radius:8px;padding:2px;background:#fff;cursor:pointer}

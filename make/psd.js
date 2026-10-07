@@ -116,8 +116,7 @@ function body(sc){
   return `<div class="psd">
     <section class="ps-side">
       <input type="file" id="psFile" accept=".png,image/png" hidden>
-      <div class="ps-up"><button class="btn solid" id="psDrop">${SW()} PNG 올리기</button>
-        <span class="sub2">${EC.stepNo("plan")}단계에서 받은 크기 그대로 저장한 파일 (끌어다 놓아도 돼요)</span></div>
+      <div class="drop up-drop" id="psDrop" role="button" tabindex="0"><span><b>${SW()} PNG</b>를<br>끌어다 놓거나 눌러서 고르세요<br><small>${EC.stepNo("plan")}단계에서 받은 크기 그대로 저장한 파일</small></span></div>
       ${note ? `<p class="note ${note.kind}">${esc(note.text)}</p>` : ""}
       <div class="ps-fld"><h3>받을 파일 이름</h3><div class="ps-fname"><input id="psName" value="${esc(fileBase)}" placeholder="${esc(defName())}"><span>.psd</span></div></div>
       <div class="ps-fld"><h3>그림을 넣을 자리</h3>
@@ -142,6 +141,7 @@ function bind(){
   EC.loadAgPsd().catch(() => {});                 // 미리 받아 둡니다
   const pick = () => $("psFile").click();
   $("psDrop").onclick = pick;
+  $("psDrop").onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); pick(); } };
   $("psFile").onchange = () => { const f = $("psFile").files[0]; $("psFile").value = ""; loadSheet(f); };
   const isFile = e => e.dataTransfer && [...e.dataTransfer.types].includes("Files");
   $("psDrop").addEventListener("dragover", e => { if (isFile(e)){ e.preventDefault(); $("psDrop").classList.add("over"); } });

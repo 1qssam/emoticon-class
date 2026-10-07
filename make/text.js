@@ -80,8 +80,7 @@ EC.drawTexts = (ctx, list) => (list || []).forEach(T => drawText(ctx, T));
 /* ── 페이지 ── */
 const page = () => SRC && SRC.pages[cur];
 const textsOf = key => { const st = ui().st; if (!st.texts[key]) st.texts[key] = []; return st.texts[key]; };
-const style = () => Object.assign({}, C.TEXT_DEFAULT, ui().st.textStyle || {});
-const remember = T => { ui().st.textStyle = { font: T.font, size: T.size, color: T.color, sw: T.sw, sc: T.sc }; };
+const style = () => Object.assign({ al: "c", va: "m" }, C.TEXT_DEFAULT);        // '+ 글씨 추가'는 늘 처음 모양으로 (같은 모양은 복사·붙여넣기로)
 
 /* 예전 '텍스트' 레이어를 뺀 모습으로 합치기 */
 const isTextLayer = n => (n.name || "").trim() === LAYER() && !n.children;
@@ -133,6 +132,10 @@ function loadMain(){
 
 /* ── 화면 ── */
 const pressed = on => `aria-pressed="${on}"`;
+/* 색: 처음엔 #000000 같은 글자로 바로 고치고, 옆의 네모를 누르면 색 고르는 창 */
+const colorBox = (id, v) => `<span class="tx-color"><input type="text" class="tx-hex" id="${id}" value="${ui().esc(String(v).toUpperCase())}" maxlength="7" spellcheck="false">
+  <input type="color" id="${id}P" value="${ui().esc(v)}" title="색 고르기"></span>`;
+const HEX = /^#[0-9a-f]{6}$/i;
 function editorHtml(){
   const esc = ui().esc, P = page(), list = P ? textsOf(P.key) : [], T = list[sel];
   if (!T) return `<p class="sub2">${P ? "그림 위의 글씨를 누르거나 '+ 글씨 추가'를 눌러 주세요." : "먼저 PSD나 PNG를 올려 주세요."}</p>`;
@@ -141,10 +144,11 @@ function editorHtml(){
   return `
       <div class="tx-fld"><h3>글자</h3><textarea id="txT" rows="2">${esc(T.t)}</textarea></div>
       <div class="tx-fld"><h3>글꼴</h3><select id="txFont">${fonts}</select></div>
-      <div class="tx-fld"><h3>크기 <span class="sub2" id="txSizeV">${T.size}px</span></h3><input type="range" id="txSize" min="12" max="300" value="${T.size}"></div>
-      <div class="tx-fld tx-2"><div><h3>글자 색</h3><input type="color" id="txColor" value="${esc(T.color)}"></div>
-        <div><h3>테두리 색</h3><input type="color" id="txSc" value="${esc(T.sc)}"></div>
-        <div><h3>테두리 두께</h3><span class="tx-px"><input type="number" id="txSw" min="0" max="60" value="${T.sw}"> px</span></div></div>
+      <div class="tx-fld"><h3>크기</h3><div class="tx-size"><input type="range" id="txSize" min="12" max="300" value="${T.size}">
+        <span class="tx-px"><input type="number" id="txSizeN" min="12" max="300" value="${T.size}"> px</span></div></div>
+      <div class="tx-fld tx-2"><div><h3>글자 색</h3>${colorBox("txColor", T.color)}</div>
+        <div><h3>테두리 색</h3>${colorBox("txSc", T.sc)}</div></div>
+      <div class="tx-fld"><h3>테두리 두께</h3><span class="tx-px"><input type="number" id="txSw" min="0" max="60" value="${T.sw}"> px</span></div>
       <div class="tx-fld"><h3>글자 정렬 <span class="sub2">(이쪽 끝이 제자리에 고정돼요)</span></h3>
         <div class="tx-seg">${[["l", "왼쪽"], ["c", "가운데"], ["r", "오른쪽"]].map(([v, t]) => `<button class="chip" data-al="${v}" ${pressed(al === v)}>${t}</button>`).join("")}</div></div>
       <div class="tx-fld"><h3>개체 정렬 <span class="sub2">(그림 칸 끝에 맞춤)</span></h3>
@@ -162,8 +166,8 @@ function body(){
   return `<div class="tx">
     <section class="tx-side">
       <input type="file" id="txFile" accept=".psd,.png,image/png" hidden>
-      <div class="row"><button class="btn solid" id="txOpen">PSD · PNG 올리기</button><button class="btn" id="txMain">대표 이미지 불러오기</button></div>
-      ${note ? `<p class="note ${note.kind}">${esc(note.text)}</p>` : ""}
+      <div class="drop up-drop" id="txOpen" role="button" tabindex="0"><span><b>PSD · PNG 파일</b>을<br>끌어다 놓거나 눌러서 고르세요</span></div>
+      <button class="btn up-alt" id="txMain">대표 이미지 불러오기</button>
       <div class="tx-tools">
         <div class="row"><button class="btn" id="txAdd" ${P ? "" : "disabled"}>+ 글씨 추가</button>
           <button class="btn" id="txPaste" title="Ctrl+V — 복사한 글씨를 같은 자리·같은 모양으로" ${P && CLIP ? "" : "disabled"}>붙여넣기</button></div>
@@ -185,7 +189,7 @@ function body(){
       </div>
       <div class="tx-stage" id="txStage"><canvas id="txCv"></canvas>${P ? "" : `<div class="tx-empty">작업 중인 PSD나 대표 이미지 PNG를 올려 주세요.<br>글씨는 페이지 이름별로 저장돼서, 같은 파일을 다시 올리면 그대로 나와요.</div>`}</div>
     </section>
-    <section class="tx-pages"><h3>페이지</h3><ol>${pages}</ol></section>
+    <section class="tx-pages"><h3>페이지</h3>${note ? `<p class="note ${note.kind}">${esc(note.text)}</p>` : ""}<ol>${pages}</ol></section>
   </div>`;
 }
 
@@ -249,6 +253,7 @@ function bind(){
   const $ = ui().$, P = page();
   EC.loadAgPsd().catch(() => {});
   $("txOpen").onclick = () => $("txFile").click();
+  $("txOpen").onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); $("txFile").click(); } };
   $("txFile").onchange = () => { const f = $("txFile").files[0]; $("txFile").value = ""; loadFile(f); };
   $("txMain").onclick = loadMain;
   $("txReset").onclick = () => {
@@ -258,8 +263,11 @@ function bind(){
   };
   const stage = $("txStage");
   const isFile = e => e.dataTransfer && [...e.dataTransfer.types].includes("Files");
-  stage.addEventListener("dragover", e => { if (isFile(e)) e.preventDefault(); });
-  stage.addEventListener("drop", e => { if (!isFile(e)) return; e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
+  [stage, $("txOpen")].forEach(el => {
+    el.addEventListener("dragover", e => { if (isFile(e)){ e.preventDefault(); el.classList.add("over"); } });
+    el.addEventListener("dragleave", e => { if (!el.contains(e.relatedTarget)) el.classList.remove("over"); });
+    el.addEventListener("drop", e => { if (!isFile(e)) return; e.preventDefault(); el.classList.remove("over"); loadFile(e.dataTransfer.files[0]); });
+  });
   document.querySelectorAll("[data-pg]").forEach(li => li.onclick = () => { cur = +li.dataset.pg; sel = -1; ui().rerender(); });
   document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { mode = b.dataset.mode; if (mode === "move") sel = -1; ui().rerender(); });
   if ($("txUnmove")) $("txUnmove").onclick = () => { P.dx = P.dy = 0; ui().rerender(); };
@@ -281,12 +289,16 @@ function bind(){
   cv.onpointerdown = e => {
     const p = pt(e);
     if (mode === "move"){
-      drag = { img: true, sx: p.x - (P.dx || 0), sy: p.y - (P.dy || 0), moved: false };
+      drag = { img: true, ox: P.dx || 0, oy: P.dy || 0, px: p.x, py: p.y, moved: false };
     } else {
-      const i = hit(p);
+      let i = hit(p), dup = false;
+      if (i >= 0 && e.altKey){                              // Alt를 누른 채 끌면 같은 페이지에 복제해서 끌기
+        e.preventDefault();
+        list.push(JSON.parse(JSON.stringify(list[i]))); i = list.length - 1; sel = -1; dup = true;
+      }
       if (i !== sel) select(i);
       if (i < 0) return;
-      drag = { i, dx: p.x - list[i].x, dy: p.y - list[i].y, moved: false };
+      drag = { i, ox: list[i].x, oy: list[i].y, px: p.x, py: p.y, moved: false, dup };
     }
     cv.setPointerCapture(e.pointerId);
   };
@@ -294,13 +306,16 @@ function bind(){
     const p = pt(e);
     if (mode === "text") cv.style.cursor = hit(p) >= 0 ? "move" : "default";
     if (!drag) return;
-    if (drag.img){ P.dx = Math.round(p.x - drag.sx); P.dy = Math.round(p.y - drag.sy); }
-    else { list[drag.i].x = Math.round(p.x - drag.dx); list[drag.i].y = Math.round(p.y - drag.dy); }
+    /* Shift를 누르고 있으면 가로나 세로 한쪽으로만 */
+    let mx = p.x - drag.px, my = p.y - drag.py;
+    if (e.shiftKey){ if (Math.abs(mx) >= Math.abs(my)) my = 0; else mx = 0; }
+    if (drag.img){ P.dx = Math.round(drag.ox + mx); P.dy = Math.round(drag.oy + my); }
+    else { list[drag.i].x = Math.round(drag.ox + mx); list[drag.i].y = Math.round(drag.oy + my); }
     drag.moved = true;
     drawStage();
   };
   cv.onpointerup = () => {
-    if (drag && drag.moved){ if (drag.img) ui().rerender(); else ui().changed(); }
+    if (drag && (drag.moved || drag.dup)){ if (drag.img) ui().rerender(); else { ui().changed(); refreshPages(); } }
     drag = null;
   };
   bindGet(P, list);
@@ -312,11 +327,17 @@ function bindEditor(){
   const T = list[sel];
   if (!T) return;
   $("txT").oninput = () => { T.t = $("txT").value; save(); };
-  $("txFont").onchange = () => { T.font = $("txFont").value; remember(T); save(); };
-  $("txSize").oninput = () => { T.size = +$("txSize").value; $("txSizeV").textContent = T.size + "px"; remember(T); save(); };
-  $("txColor").oninput = () => { T.color = $("txColor").value; remember(T); save(); };
-  $("txSc").oninput = () => { T.sc = $("txSc").value; remember(T); save(); };
-  $("txSw").oninput = () => { T.sw = Math.max(0, Math.min(60, +$("txSw").value || 0)); remember(T); save(); };
+  $("txFont").onchange = () => { T.font = $("txFont").value; save(); };
+  $("txSize").oninput = () => { T.size = +$("txSize").value; $("txSizeN").value = T.size; save(); };
+  $("txSizeN").oninput = () => { const v = Math.round(+$("txSizeN").value); if (v >= 6 && v <= 600){ T.size = v; $("txSize").value = v; save(); } };
+  $("txSizeN").onchange = () => { $("txSizeN").value = T.size; };
+  [["txColor", "color"], ["txSc", "sc"]].forEach(([id, k]) => {
+    const hex = $(id), pick = $(id + "P");
+    hex.oninput = () => { let v = hex.value.trim(); if (!v.startsWith("#")) v = "#" + v; if (HEX.test(v)){ T[k] = v.toLowerCase(); pick.value = T[k]; save(); } };
+    hex.onchange = () => { hex.value = T[k].toUpperCase(); };
+    pick.oninput = () => { T[k] = pick.value; hex.value = pick.value.toUpperCase(); save(); };
+  });
+  $("txSw").oninput = () => { T.sw = Math.max(0, Math.min(60, +$("txSw").value || 0)); save(); };
   /* 글자 정렬 = 고정점 바꾸기 (보이는 자리는 그대로) */
   document.querySelectorAll("[data-al]").forEach(b => b.onclick = () => {
     const bx = textBox(T); T.al = b.dataset.al; placeBox(T, bx.x, bx.y);
@@ -355,6 +376,22 @@ function shiftNode(node, dx, dy){
   });
 }
 
+/* 메디방 PSD를 읽으면 폴더에도 그림 정보가 붙어 오는 경우가 있어서, 저장 전에 폴더의 그림 정보는 지웁니다
+   (ag-psd: "cannot have both 'imageData' and 'children'") */
+function cleanGroups(node){
+  (node.children || []).forEach(c => {
+    if (c.children){ delete c.imageData; delete c.canvas; cleanGroups(c); }
+  });
+}
+/* 페이지 목록의 글씨 개수 표시만 고치기 */
+function refreshPages(){
+  if (!SRC) return;
+  document.querySelectorAll("[data-pg]").forEach(li => {
+    const p = SRC.pages[+li.dataset.pg], n = (ui().st.texts[p.key] || []).length;
+    let b = li.querySelector("b"); if (!n){ if (b) b.remove(); return; }
+    if (!b){ b = document.createElement("b"); li.appendChild(b); } b.textContent = n;
+  });
+}
 function bindGet(P, list){
   const $ = ui().$;
   $("txPng").onclick = async () => {
@@ -381,6 +418,7 @@ function bindGet(P, list){
         delete L.canvas; delete L.text;
         Object.assign(L, { top: 0, left: 0, bottom: H, right: W, imageData: img });
       }
+      cleanGroups(psd);
       if (!psd.imageResources) psd.imageResources = {};
       if (!psd.imageResources.resolutionInfo) psd.imageResources.resolutionInfo = EC.PSD_RES;
       const buf = ag.writePsd(psd, { noBackground: true, invalidateTextLayers: true });

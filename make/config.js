@@ -173,7 +173,8 @@ window.EC_CONFIG = {
     { name: "Gaegu",            label: "개구",            weight: 700, google: "Gaegu:wght@700" },
     { name: "Nanum Pen Script", label: "나눔손글씨 펜",   weight: 400, google: "Nanum+Pen+Script" },
   ],
-  TEXT_DEFAULT: { font: "Pretendard", size: 90, color: "#ffffff", sw: 8, sc: "#000000" },
+  /* '+ 글씨 추가'를 누를 때 처음 모양 (글자색·테두리색·테두리 두께 px, 정렬 c = 가운데) */
+  TEXT_DEFAULT: { font: "Pretendard", size: 90, color: "#000000", sw: 5, sc: "#ffffff", al: "c", va: "m" },
   TEXT_LAYER: "텍스트",      // PSD 안에서 글씨를 넣을 레이어 이름
 
   /* 10단계 키워드 목록 (emoticon-data가 만들어 emoticon-rank에 올리는 공개 파일 — 이름과 분류만) */
