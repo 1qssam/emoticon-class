@@ -163,17 +163,28 @@ window.EC_CONFIG = {
   /* 아직 만들지 않은 단계 (왼쪽 목록에 흐리게) */
   LATER: [],
 
-  /* 13단계 글씨 넣기 글꼴 — 원큐쌤이 고른 웹폰트로 바꾸면 됩니다 (상업적으로 써도 되는 글꼴만)
-     google: 구글 폰트 이름(주소에 쓰는 모양), weight: 굵기. Pretendard는 페이지에 이미 들어 있어요 */
+  /* 13단계 글씨 넣기 글꼴 — 상업적으로 써도 되는 글꼴만 넣으세요. 한 줄에 글꼴 하나:
+       name  : 글꼴 이름 (CSS에서 부르는 이름, 정확히)
+       label : 목록에 보일 이름
+       weight: 처음 굵기 (400 보통, 700 굵게 …)
+       weights: 고를 수 있는 굵기들 — 두 개 이상 적으면 '굵기' 칸이 생깁니다. 예) weights: [300, 400, 700]
+                구글 폰트는 google에도 같은 굵기를 적어 주세요. 예) google: "Gaegu:wght@300;400;700"
+     글꼴을 불러오는 방법은 셋 중 하나만 적으면 됩니다.
+       google: 구글 폰트 — fonts.google.com 주소에 쓰는 이름 (띄어쓰기는 +)      예) google: "Black+Han+Sans"
+       css   : 글꼴을 불러오는 CSS 주소 (눈누 등에서 웹폰트 <link> 주소를 줄 때)   예) css: "https://…/font.css"
+       url   : 글꼴 파일 주소 (.woff2 / .woff / .ttf)                            예) url: "https://…/font.woff2"
+     Pretendard는 페이지에 이미 들어 있어서 셋 다 없어도 됩니다. */
   TEXT_FONTS: [
-    { name: "Pretendard",       label: "프리텐다드",      weight: 800 },
+    { name: "Pretendard",       label: "프리텐다드",      weight: 800, weights: [300, 400, 500, 600, 700, 800, 900] },
     { name: "Jua",              label: "주아",            weight: 400, google: "Jua" },
     { name: "Do Hyeon",         label: "도현",            weight: 400, google: "Do+Hyeon" },
     { name: "Black Han Sans",   label: "검은고딕",        weight: 400, google: "Black+Han+Sans" },
-    { name: "Gaegu",            label: "개구",            weight: 700, google: "Gaegu:wght@700" },
+    { name: "Gaegu",            label: "개구",            weight: 700, weights: [300, 400, 700], google: "Gaegu:wght@300;400;700" },
     { name: "Nanum Pen Script", label: "나눔손글씨 펜",   weight: 400, google: "Nanum+Pen+Script" },
   ],
   /* '+ 글씨 추가'를 누를 때 처음 모양 (글자색·테두리색·테두리 두께 px, 정렬 c = 가운데) */
+  /* 굵기 이름 (굵기 칸에 보이는 글) */
+  WEIGHT_NAMES: { 100: "아주 가늘게", 200: "더 가늘게", 300: "가늘게", 400: "보통", 500: "중간", 600: "조금 굵게", 700: "굵게", 800: "더 굵게", 900: "가장 굵게" },
   TEXT_DEFAULT: { font: "Pretendard", size: 90, color: "#000000", sw: 5, sc: "#ffffff", al: "c", va: "m" },
   TEXT_LAYER: "텍스트",      // PSD 안에서 글씨를 넣을 레이어 이름
 
