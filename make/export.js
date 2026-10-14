@@ -2,6 +2,7 @@
    14단계 — 완성 파일 받기
    · 완성한 PSD를 올리면 맨 위 단계의 폴더/레이어마다 PNG 한 장(72dpi)으로 바꿔 ZIP으로 줍니다.
    · 파일 이름 = 폴더 이름 (여기서 바로 고칠 수 있음). 크기는 올린 PSD 그대로 (OGQ용·카카오용은 각각 올리기)
+   · '번호'를 고르면 폴더 이름은 무시하고, 고른 것만 목록 순서대로 1.png, 2.png … (브라우저에 기억)
    · 이름이 비었거나, 같은 이름이 있거나, 파일 이름에 못 쓰는 글자가 있으면 빨갛게 표시하고 ZIP을 막습니다.
    · 폴더의 눈이 꺼져 있어도 그 폴더는 그립니다 (폴더 안에서 눈 끈 레이어는 뺌)
    ════════════════════════════════════════════════ */
@@ -10,11 +11,14 @@ const EC = window.EC;
 const ui = () => EC.ui;
 let ITEMS = [];          // [{ name, cv, thumb, on }]
 let base = "", info = null, note = null, busy = false, W = 0, H = 0;
+let numName = false;     // true면 파일 이름을 번호로 (1.png, 2.png …)
+try { numName = localStorage.getItem("ec-ex-num") === "1"; } catch (e) {}
 
 const BAD = /[\\/:*?"<>|]/;
 /* 이름 문제 찾기 (같은 이름은 고른 것끼리만 검사) */
 function problems(){
   const out = ITEMS.map(() => "");
+  if (numName) return out;                                  // 번호로 받으면 이름은 따지지 않음
   const seen = {};
   ITEMS.forEach((x, i) => {
     const n = x.name.trim();
@@ -55,7 +59,7 @@ function itemHtml(x, i){
   return `<li class="ex-it${x.on ? "" : " off"}" data-it="${i}">
       <label><input type="checkbox" data-on="${i}" ${x.on ? "checked" : ""}></label>
       <img class="ex-th" src="${x.thumb}" alt="" style="aspect-ratio:${W} / ${H}">
-      <span class="ex-name"><input value="${esc(x.name)}" data-nm="${i}" aria-label="${i + 1}번 파일 이름" spellcheck="false"><span>.png</span></span>
+      <span class="ex-name"><input value="${esc(x.name)}" data-nm="${i}" aria-label="${i + 1}번 파일 이름" spellcheck="false" ${numName ? "disabled" : ""}><span data-ext="${i}">.png</span></span>
       <span class="ex-why" data-why="${i}"></span>
       <button class="btn" data-one="${i}">이 한 장 받기</button></li>`;
 }
@@ -70,6 +74,10 @@ function body(){
       ${note ? `<p class="note ${note.kind}">${esc(note.text)}</p>` : ""}
       ${info ? `<p class="sub2">${esc(info)}</p>` : ""}
       <div class="ps-fld"><h3>받을 ZIP 이름</h3><div class="ps-fname"><input id="exName" value="${esc(base)}" placeholder="이모티콘"><span>.zip</span></div></div>
+      <div class="ps-fld"><h3>PNG 파일 이름</h3><div class="ex-nm">
+        <label><input type="radio" name="exNm" value="folder" ${numName ? "" : "checked"}> 폴더 이름</label>
+        <label><input type="radio" name="exNm" value="num" ${numName ? "checked" : ""}> 번호 (1, 2, 3 …)</label></div>
+        <p class="sub2" id="exNmNote" ${numName ? "" : "hidden"}>폴더 이름은 무시하고, 고른 것만 목록 순서대로 번호를 붙여요.</p></div>
       <button class="btn solid ps-get" id="exGet"></button>
       <p class="ex-block" id="exBlock"></p>
       <p class="sub2" style="margin-top:12px">PNG는 올린 PSD 크기 그대로, 72dpi로 만들어요. 레이어 효과·조정 레이어는 따라 하지 못하고, 마스크는 다르게 나올 수 있어요. 받기 전에 한 장씩 확인해 주세요.</p>
@@ -84,7 +92,9 @@ function body(){
 }
 
 const pngOf = async cv => EC.pngWithDpi(await new Promise(r => cv.toBlob(r, "image/png")), 72);
-const fileName = x => x.name.trim() + ".png";
+/* 번호 = 고른 것만 목록 순서대로 1부터 */
+const numOf = x => ITEMS.filter(y => y.on).indexOf(x) + 1;
+const fileName = x => (numName ? String(numOf(x)) : x.name.trim()) + ".png";
 
 /* 화면을 다시 그리지 않고 표시만 고칩니다 (목록 스크롤이 튀지 않게) */
 function refresh(){
@@ -96,10 +106,13 @@ function refresh(){
     li.classList.toggle("off", !x.on); li.classList.toggle("bad", !!why[i]);
     li.querySelector("[data-why]").textContent = why[i];
     li.querySelector("[data-one]").disabled = !!why[i];
+    li.querySelector("[data-nm]").disabled = numName;
+    li.querySelector("[data-ext]").textContent = numName ? (x.on ? `  → ${numOf(x)}.png` : "") : ".png";
   });
   $("exCnt").textContent = ITEMS.length ? `${n} / ${ITEMS.length}장` : "";
   if (!busy) $("exGet").textContent = `PNG ${n}장 ZIP으로 받기`;
   $("exGet").disabled = !n || !!bad || busy;
+  document.querySelectorAll("[name=exNm]").forEach(r => { r.disabled = busy; });
   $("exBlock").textContent = bad ? `빨갛게 표시된 이름 ${bad}개를 고치면 받을 수 있어요.` : "";
 }
 
@@ -116,6 +129,11 @@ function bind(){
     el.addEventListener("drop", e => { if (!isFile(e)) return; e.preventDefault(); el.classList.remove("over"); load(e.dataTransfer.files[0]); });
   });
   $("exName").oninput = () => { base = $("exName").value; };
+  document.querySelectorAll("[name=exNm]").forEach(r => r.onchange = () => {
+    numName = r.value === "num" && r.checked;
+    try { localStorage.setItem("ec-ex-num", numName ? "1" : "0"); } catch (e) {}
+    $("exNmNote").hidden = !numName; refresh();
+  });
   $("exReset").onclick = () => {
     if (ITEMS.length && !confirm("올린 PSD를 지우고 이 단계를 처음부터 할까요?")) return;
     ITEMS = []; base = ""; info = null; note = null; ui().rerender();
@@ -126,17 +144,20 @@ function bind(){
   if ($("exAll")) $("exAll").onclick = () => all(true);
   if ($("exNone")) $("exNone").onclick = () => all(false);
   document.querySelectorAll("[data-one]").forEach(b => b.onclick = async () => {
-    const x = ITEMS[+b.dataset.one]; EC.download(await pngOf(x.cv), fileName(x));
+    const x = ITEMS[+b.dataset.one];
+    // 번호로 받을 때 안 고른 것은 번호가 없어서 폴더 이름으로 (비었으면 목록 자리 번호)
+    const name = numName && !x.on ? (x.name.trim() && !BAD.test(x.name) ? x.name.trim() : `${ITEMS.indexOf(x) + 1}번`) + ".png" : fileName(x);
+    EC.download(await pngOf(x.cv), name);
   });
   $("exGet").onclick = async () => {
     if (problems().some((w, i) => w && ITEMS[i].on)) return refresh();
-    busy = true; const b = $("exGet"); b.disabled = true; b.textContent = "만드는 중…";
+    busy = true; refresh(); const b = $("exGet"); b.textContent = "만드는 중…";
     try {
       const files = [];
-      for (const x of ITEMS){
-        if (!x.on) continue;
+      const plan = ITEMS.filter(x => x.on).map(x => [x, fileName(x)]);   // 이름은 시작할 때 정해 둠 (만드는 중에 바꿔도 안 섞이게)
+      for (const [x, name] of plan){
         const blob = await pngOf(x.cv);
-        files.push({ name: fileName(x), data: new Uint8Array(await blob.arrayBuffer()) });
+        files.push({ name, data: new Uint8Array(await blob.arrayBuffer()) });
       }
       EC.download(EC.makeZip(files), (EC.safeName(base) || "이모티콘") + ".zip");
       ui().st.exportMade = true; ui().changed();

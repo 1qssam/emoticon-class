@@ -386,6 +386,10 @@ body.wide .card{max-width:1500px}
 .ex-it.bad .ex-name input{border-color:#ff1100}
 .ex-why{font-size:13px;color:#ff1100;min-height:0}
 .ex-why:empty{display:none}
+.ex-nm{display:flex;gap:16px;font-size:16px}
+.ex-nm label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.ex-nm input{width:18px;height:18px;accent-color:#17181a}
+.ex-name input:disabled{background:#f4f3ef;color:#a5a39d}
 .ex-it .btn{justify-self:start;font-size:14px;padding:5px 10px}
 .ex-block{color:#ff1100;font-size:15px;margin:8px 0 0}
 .ex-block:empty{display:none}
@@ -411,6 +415,11 @@ body.wide .card{max-width:1500px}
 .tx-bar .chip{font-size:16px;padding:7px 14px}
 .tx-bar .btn{font-size:14px;padding:5px 10px}
 .tx-keys{margin-left:auto}
+.tx-bg{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.tx-sw{width:24px;height:24px;border-radius:6px;border:1px solid #d8d6d0;cursor:pointer;padding:0}
+.tx-sw.clear{background:conic-gradient(#fff 25%,#e3e2dd 0 50%,#fff 0 75%,#e3e2dd 0) 0 0/10px 10px}
+.tx-sw[aria-pressed="true"],#txBgPick[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+#txBgPick{width:26px;height:26px;padding:0;border:1px solid #d8d6d0;border-radius:6px;background:#fff;cursor:pointer}
 .tx-seg{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}
 .tx-seg .chip{font-size:15px;padding:5px 11px}
 .tx-ax{font-size:14px;color:var(--muted);width:30px}

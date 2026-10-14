@@ -26,6 +26,11 @@ let SRC = null;          // { kind: "psd"|"png", name, psd?, W, H, pages: [{ key
 let cur = 0, sel = -1, note = null;
 let mode = "text";       // "text" | "move"
 let CLIP = null;         // 복사해 둔 글씨 하나
+let pgScroll = 0;        // 오른쪽 페이지 목록 스크롤 자리 (다시 그려도 그 자리 그대로)
+/* 작업 화면 배경 — 볼 때만 쓰는 색 (받는 PNG·PSD는 그대로 투명). 브라우저에 기억 */
+const BGS = [["", "투명"], ["#b2c7d9", "하늘색 (카카오톡 채팅방)"], ["#1e1e1e", "검정"]];
+let BG = "";
+try { BG = localStorage.getItem("ec-tx-bg") || ""; } catch (e) {}
 
 /* ── 실행취소 / 재실행 ── 바꾸기 직전에 snap()으로 지금 모습을 적어 둡니다 (글씨 전부 + 그림 옮긴 거리) */
 let UNDO = [], REDO = [];
@@ -276,8 +281,12 @@ function body(){
         <button class="chip" data-mode="move" ${pressed(mode === "move")} ${P ? "" : "disabled"} title="그림(켜진 레이어)을 끌어서 옮기기">✥ 그림 옮기기</button>
         ${moved ? `<span class="sub2">그림 ${P.dx > 0 ? "→" : "←"}${Math.abs(P.dx)} ${P.dy > 0 ? "↓" : "↑"}${Math.abs(P.dy)}px</span><button class="btn" id="txUnmove">그림 제자리로</button>` : ""}
         <span class="sub2 tx-keys">방향키 1px · Shift+방향키 10px</span>
+        <span class="tx-bg" title="작업 화면에서만 보이는 배경이에요. 받는 파일은 투명 그대로예요.">배경
+          ${BGS.map(([v, t]) => `<button class="tx-sw${v ? "" : " clear"}" data-bg="${v}" style="${v ? `background:${v}` : ""}" title="${t}" aria-pressed="${BG === v}"></button>`).join("")}
+          <input type="color" id="txBgPick" value="${/^#[0-9a-f]{6}$/i.test(BG) && !BGS.some(b => b[0] === BG) ? BG : "#ffffff"}" title="직접 고르기"
+            aria-pressed="${!!BG && !BGS.some(b => b[0] === BG)}"></span>
       </div>
-      <div class="tx-stage" id="txStage"><canvas id="txCv"></canvas>${P ? "" : `<div class="tx-empty">작업 중인 PSD나 대표 이미지 PNG를 올려 주세요.<br>글씨는 페이지 이름별로 저장돼서, 같은 파일을 다시 올리면 그대로 나와요.</div>`}</div>
+      <div class="tx-stage" id="txStage"><canvas id="txCv" style="${P && SRC ? `width:${Math.round(SRC.W * view.s)}px;height:${Math.round(SRC.H * view.s)}px;` : ""}${BG ? `background:${BG}` : ""}"></canvas>${P ? "" : `<div class="tx-empty">작업 중인 PSD나 대표 이미지 PNG를 올려 주세요.<br>글씨는 페이지 이름별로 저장돼서, 같은 파일을 다시 올리면 그대로 나와요.</div>`}</div>
     </section>
     <section class="tx-pages"><h3>페이지</h3>${note ? `<p class="note ${note.kind}">${esc(note.text)}</p>` : ""}<ol>${pages}</ol></section>
   </div>`;
@@ -379,7 +388,22 @@ function bind(){
     el.addEventListener("dragleave", e => { if (!el.contains(e.relatedTarget)) el.classList.remove("over"); });
     el.addEventListener("drop", e => { if (!isFile(e)) return; e.preventDefault(); el.classList.remove("over"); loadFile(e.dataTransfer.files[0]); });
   });
-  document.querySelectorAll("[data-pg]").forEach(li => li.onclick = () => { cur = +li.dataset.pg; sel = -1; ui().rerender(); });
+  /* 페이지 목록: 다시 그려도 스크롤 자리를 지킵니다 (누를 때 위로 튕기지 않게) */
+  const pgList = document.querySelector(".tx-pages ol");
+  if (pgList){ pgList.scrollTop = pgScroll; pgList.onscroll = () => { pgScroll = pgList.scrollTop; }; }
+  document.querySelectorAll("[data-pg]").forEach(li => li.onclick = () => {
+    if (pgList) pgScroll = pgList.scrollTop;               // 누른 순간의 자리를 기억
+    cur = +li.dataset.pg; sel = -1; ui().rerender();
+  });
+  /* 배경 고르기 — 다시 그리지 않고 캔버스 배경만 바꿈 */
+  const setBg = v => {
+    BG = v; try { localStorage.setItem("ec-tx-bg", v); } catch (e) {}
+    $("txCv").style.background = v;
+    document.querySelectorAll("[data-bg]").forEach(b => b.setAttribute("aria-pressed", b.dataset.bg === v));
+    $("txBgPick").setAttribute("aria-pressed", !!v && !BGS.some(b => b[0] === v));
+  };
+  document.querySelectorAll("[data-bg]").forEach(b => b.onclick = () => setBg(b.dataset.bg));
+  $("txBgPick").oninput = () => setBg($("txBgPick").value);
   document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { mode = b.dataset.mode; if (mode === "move") sel = -1; ui().rerender(); });
   if ($("txUnmove")) $("txUnmove").onclick = () => { snap(); P.dx = P.dy = 0; ui().rerender(); };
   if ($("txUndo")){ $("txUndo").onclick = undo; $("txRedo").onclick = redo; }
