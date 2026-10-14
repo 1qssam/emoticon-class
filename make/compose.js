@@ -10,6 +10,10 @@
    · 가운데 막대를 끌면 왼쪽·오른쪽 너비 조절 (두 번 누르면 처음 크기)
    st.compose.rows = [{ main: true, words: [덧붙인 키워드...] }, { words: [...] }, ...]
      (대표 줄의 첫 말은 st.say — 여기서 고치면 1단계도 같이 바뀜)
+   · '선택한 연령대, 스타일에서 자주 보이는 표현' 체크(st.compose.tg, 기본 켬):
+       6단계에서 고른 연령대(st.ages)·스타일(st.tags)의 이모티콘 구성에 자주 보이는 경향이 있는 키워드를
+       묶음마다 위로 올리고 표시합니다. 연령대·스타일 둘 다 맞는 것 → 하나만 맞는 것 → 나머지 순.
+       표시는 kwlist.js의 tl(타겟 이름)·tg({키워드: [tl 번호]})로 옵니다. 숫자는 들어 있지 않습니다.
    ════════════════════════════════════════════════ */
 (function(){
 const EC = window.EC, C = window.EC_CONFIG;
@@ -60,6 +64,30 @@ function addWord(w, at){
   redraw();
 }
 
+/* 6단계에서 고른 타겟 중 키워드 목록에 표시가 있는 것 */
+function target(){
+  const st = ui().st, tl = K().tl || [];
+  return { ages: (st.ages || []).filter(a => a !== "any" && tl.includes(a)),
+           tags: (st.tags || []).filter(t => tl.includes(t)) };
+}
+const tgOn = () => ui().st.compose.tg !== false;
+/* 키워드 한 개의 점수: 연령대 맞음 1 + 스타일 맞음 1 (켜져 있고 6단계에서 골랐을 때만) */
+function tgScorer(){
+  const tl = K().tl || [], tg = K().tg || {}, t = target();
+  if (!K().tg || !tgOn() || !(t.ages.length || t.tags.length)) return null;
+  const ai = t.ages.map(a => tl.indexOf(a)), ti = t.tags.map(x => tl.indexOf(x));
+  return w => { const v = tg[w] || []; return (ai.some(i => v.includes(i)) ? 1 : 0) + (ti.some(i => v.includes(i)) ? 1 : 0); };
+}
+function tgBarHtml(){
+  if (!K().tg) return "";                              // 예시 목록이거나 아직 못 불러옴
+  const esc = ui().esc, t = target();
+  const none = !(t.ages.length || t.tags.length);
+  const names = t.ages.map(a => ((C.AGES || []).find(x => x[0] === a) || [a, a])[1]).concat(t.tags.map(EC.tagLabel));
+  return `<label class="ktg${none ? " off" : ""}" title="${EC.stepNo("market")}단계에서 고른 연령대·스타일의 이모티콘 구성에 자주 보이는 경향이 있는 표현을, 묶음마다 위쪽에 색으로 표시해요.">
+      <input type="checkbox" id="kTg" ${tgOn() && !none ? "checked" : ""} ${none ? "disabled" : ""}> 선택한 연령대, 스타일에서 자주 보이는 표현</label>
+    <p class="ktgsub">${none ? `${EC.stepNo("market")}단계에서 연령대·스타일을 고르면 쓸 수 있어요.` : `${EC.stepNo("market")}단계: ${esc(names.join(" · "))}`}</p>`;
+}
+
 function prodHtml(){
   const st = ui().st, esc = ui().esc;
   const t = String(st.title || "").trim(), a = String(st.author || "").trim();
@@ -71,10 +99,13 @@ function prodHtml(){
 function body(sc){
   loadKw();
   const st = ui().st, esc = ui().esc, R = ui().R, U = used(), list = rows();
+  const score = tgScorer();
+  /* 체크가 켜져 있으면 묶음 안에서 타겟에 맞는 것을 위로 (같은 점수끼리는 원래 순서 그대로) */
+  const ordered = ws => score ? ws.map((w, i) => [w, score(w), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map(x => x[0]) : ws;
   /* 모든 묶음을 그려 두고, 접힌 묶음은 화면에서만 숨깁니다 (찾기는 글자를 칠 때마다 화면에서 바로 거름) */
   const secs = K().sections.map((s, si) => {
-    const cats = s.cats.map(c => `<div class="kcat"><h4>${esc(c.name)}</h4><div class="kws">${c.words.map(w =>
-        `<button class="kw${U.has(w) ? " used" : ""}" draggable="true" data-kw="${esc(w)}">${esc(w)}</button>`).join("")}</div></div>`).join("");
+    const cats = s.cats.map(c => `<div class="kcat"><h4>${esc(c.name)}</h4><div class="kws">${ordered(c.words).map(w =>
+        `<button class="kw${U.has(w) ? " used" : ""}${score && score(w) ? " tg" : ""}" draggable="true" data-kw="${esc(w)}">${esc(w)}</button>`).join("")}</div></div>`).join("");
     const open = openSecs.has(si);
     return `<div class="ksec${open ? " open" : ""}" data-si="${si}"><button class="ksh" data-sec="${si}">${esc(s.name)} <span class="arr">${open ? "▾" : "▸"}</span></button>
       <div class="kbody">${cats}</div></div>`;
@@ -98,6 +129,7 @@ function body(sc){
         <p class="sub2">${R(sc.orderNote)} ${R(sc.howTo)}</p></div></div>
     <div class="compose" id="compose" style="${cw ? `--cw:${cw}px` : ""}">
       <div class="kpanel">
+        ${tgBarHtml()}
         <input class="ksearch" id="kq" value="${esc(q)}" placeholder="키워드 찾기" aria-label="키워드 찾기">
         <div class="kscroll" id="kscroll"><div id="ksecs">${secs}</div>
           <p class="sub2" id="knone" hidden>찾는 키워드가 없어요. 오른쪽 줄의 '직접 적기'로 넣어 보세요.</p></div>
@@ -184,6 +216,8 @@ function bind(sc){
     $("knone").hidden = any;
   };
   $("kq").oninput = () => { q = $("kq").value; filter(); };
+  /* 선택한 연령대, 스타일에서 자주 보이는 표현 — 켜고 끄기 (기획시트에 저장) */
+  if ($("kTg")) $("kTg").onchange = () => { st.compose.tg = $("kTg").checked; ui().changed(); redraw(); };
   filter();
   /* 묶음 펼치기·접기 (다시 그리지 않고 화면에서만) */
   document.querySelectorAll("[data-sec]").forEach(b => b.onclick = () => {
