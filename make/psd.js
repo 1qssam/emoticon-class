@@ -156,7 +156,18 @@ function bind(){
   document.querySelectorAll("[data-place]").forEach(b => b.onclick = () => { s.place = b.dataset.place; ui().rerender(); });
   $("psOnly").onchange = () => { s.onlyFirst = $("psOnly").checked; ui().rerender(); };
   $("psOrder").onchange = () => { s.order = $("psOrder").value; ui().rerender(); };
-  $("psFill").onclick = () => { FOLDERS.forEach(f => { f.text = f.kw; }); ui().rerender(); };
+  /* 11단계 칸 내용 넣기 — 누르는 순간의 11단계 내용을 읽음 (PNG 속 글자가 아니라 이 브라우저에 저장된 내용) */
+  $("psFill").onclick = () => {
+    if (!FOLDERS.length){ note = { kind: "warn", text: `먼저 ${SW()} PNG를 올려 주세요.` }; return ui().rerender(); }
+    const items = (ui().st.plan || {}).items || [];
+    const got = FOLDERS.map(f => String(items[f.cell] || "").trim());
+    if (!got.some(Boolean)){
+      note = { kind: "warn", text: `${EC.stepNo("plan")}단계 ${SW()} 칸 내용이 이 브라우저에 없어요. 같은 브라우저에서 ${EC.stepNo("plan")}단계 칸을 채운 뒤 다시 눌러 주세요. (시크릿 창이나 다른 브라우저에서 만든 PNG는 칸 내용을 함께 가져오지 않아요)` };
+      return ui().rerender();
+    }
+    FOLDERS.forEach((f, i) => { f.kw = got[i]; f.text = got[i]; });
+    ui().rerender();
+  };
   $("psEmpty").onclick = () => { FOLDERS.forEach(f => { f.text = ""; }); ui().rerender(); };
   $("psList").querySelectorAll("input").forEach(inp => {
     inp.oninput = () => { FOLDERS[+inp.dataset.i].text = inp.value; };
