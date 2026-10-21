@@ -203,6 +203,10 @@ async function loadFile(file){
 function loadMain(){
   const st = ui().st;
   if (!st.mainImg){ note = { kind: "warn", text: `${EC.stepNo("mainimg")}단계에서 대표 이미지를 먼저 올려 주세요.` }; return ui().rerender(); }
+  /* PSD를 올려 둔 상태에서 잘못 누르면 작업이 사라진 것처럼 보여서, 한 번 묻습니다 */
+  if (SRC && SRC.kind === "psd" && !confirm(`지금 올린 PSD(${SRC.name}) 대신 대표 이미지를 열까요?
+
+PSD에 넣은 글씨는 페이지별로 저장돼 있어서, 같은 PSD를 다시 올리면 그대로 돌아와요.`)) return;
   const im = new Image();
   im.onload = () => {
     const cv = document.createElement("canvas"); cv.width = im.width; cv.height = im.height; cv.getContext("2d").drawImage(im, 0, 0);

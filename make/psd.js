@@ -41,14 +41,28 @@ function geom(){
 }
 function sizeMessage(W, H){
   const { G, STEP_Y, sheetW, sheetH } = geom();
-  for (let c = 1; c <= 12; c++){
+  /* 줄었거나 늘어난 그림인지 — 11단계는 6칸 고정이라 6칸으로만 봅니다 (넓게 보면 엉뚱한 칸 수에 걸림) */
+  for (const c of [6]){
     const s = W / sheetW(c);
     if (Math.abs(s - 1) < 0.005) continue;
     const r = Math.round((H / s - G.margin * 2 + G.gapY) / STEP_Y);
     if (r >= 1 && Math.abs(H / s - sheetH(r)) <= 1 / s + 0.5)
       return `그림 크기가 ${SW()}와 달라요 (지금 ${W.toLocaleString()} × ${H.toLocaleString()}px). 원본의 약 ${Math.round(s * 100)}% 크기로 바뀐 것 같아요. 크기를 바꾸지 말고, ${EC.stepNo("plan")}단계에서 받은 크기 그대로 저장해서 다시 올려 주세요.`;
   }
-  return `그림 크기가 ${SW()}와 달라요 (지금 ${W.toLocaleString()} × ${H.toLocaleString()}px). ${SW()}의 가로 크기는 ${[4, 5, 6, 8].map(c => `${c}칸 ${sheetW(c).toLocaleString()}`).join(" · ")}px 중 하나예요. 잘라내거나 크기를 바꾸지 말고 그대로 저장해서 다시 올려 주세요.`;
+  /* 11단계에 적힌 칸 수로 올려야 할 크기를 정확히 알려 줍니다 (11단계는 한 줄 6칸 고정) */
+  const now = `지금 파일은 ${W.toLocaleString()} × ${H.toLocaleString()}px`;
+  const items = ((ui().st.plan || {}).items || []).slice();
+  while (items.length && !String(items[items.length - 1]).trim()) items.pop();
+  const C6 = 6;
+  if (items.length){
+    const r = Math.ceil(items.length / C6), eW = sheetW(C6), eH = sheetH(r);
+    const want = `${EC.stepNo("plan")}단계 ${SW()}는 ${C6}칸 × ${r}줄이라 ${eW.toLocaleString()} × ${eH.toLocaleString()}px예요`;
+    const why = W === eW ? "가로는 맞는데 세로가 달라요. 아래쪽이 잘렸거나 캔버스 크기를 바꾼 것 같아요."
+              : H === eH ? "세로는 맞는데 가로가 달라요. 옆쪽이 잘렸거나 캔버스 크기를 바꾼 것 같아요."
+              : "가로·세로가 모두 달라요. 다른 파일이거나 캔버스 크기를 바꾼 것 같아요.";
+    return `${want}. ${now}. ${why} ${EC.stepNo("plan")}단계에서 받은 파일에 그대로 그려서, 크기를 바꾸지 말고 저장해 올려 주세요.`;
+  }
+  return `그림 크기가 ${SW()}와 달라요 (${now}). ${EC.stepNo("plan")}단계에서 받은 ${SW()}(가로 ${sheetW(C6).toLocaleString()}px)에 그대로 그려서, 크기를 바꾸지 말고 저장해 올려 주세요.`;
 }
 function hasBorder(ctx, x0, y0){
   const { CELL, HEAD } = geom();
