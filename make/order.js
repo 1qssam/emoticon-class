@@ -2,6 +2,7 @@
    15단계 — 순서 정하기
    · 완성한 이미지(PNG·GIF·WebP)를 여러 장 올리면, 왼쪽 목록·가로 6칸·가로 4칸 세 곳에 같은 순서로 보입니다.
    · 어느 곳에서든 끌어서 옮기면 세 곳이 함께 바뀝니다. 나중에 올린 것은 맨 뒤에 붙습니다.
+     끄는 동안 들어갈 자리를 파란 줄로 표시 (칸은 사이 세로줄, 왼쪽 목록은 사이 가로줄 — 세 곳 모두 같은 자리)
    · 한 번에 여러 장을 올리면 파일 이름의 숫자 순(1, 2, 10 …)으로 놓습니다.
    · 받기: 정한 순서대로 1, 2, 3 … 이름을 붙여 ZIP으로 (파일은 바꾸지 않고 이름만 — 확장자는 원래대로)
    · 배경은 볼 때만 쓰는 색 (13단계와 같은 고르기, 따로 기억). 올린 그림은 새로 고치면 사라집니다.
@@ -31,10 +32,13 @@ function add(files){
     : { kind: "ok", text: `${good.length}장을 올렸어요. 끌어서 순서를 바꿔 보세요.` };
   ui().rerender();
 }
-function move(from, to){
-  if (from < 0 || to < 0 || from === to) return;
+/* from번을 at 자리(0 = 맨 앞, ITEMS.length = 맨 뒤)로 */
+function move(from, at){
+  if (from < 0 || at < 0) return;
+  const to = at > from ? at - 1 : at;  // 빼고 나면 뒤쪽 자리가 하나 당겨짐
+  if (to === from) return;
   const [x] = ITEMS.splice(from, 1);
-  ITEMS.splice(to, 0, x);              // 뒤로 옮기면 놓은 칸 뒤, 앞으로 옮기면 놓은 칸 앞
+  ITEMS.splice(to, 0, x);
 }
 function remove(i){
   const [x] = ITEMS.splice(i, 1);
@@ -115,8 +119,22 @@ function bind(){
 
   /* 칸 끌어서 옮기기 — 세 목록 모두 같은 번호를 쓰므로 어디서 어디로 옮겨도 됨 */
   const areas = [$("odUp"), $("odG6"), $("odG4")];
-  const clear = () => document.querySelectorAll(".od .tgt").forEach(li => li.classList.remove("tgt"));
-  const mark = i => { clear(); document.querySelectorAll(`.od [data-i="${i}"]`).forEach(li => li.classList.add("tgt")); };
+  /* 들어갈 자리: 칸의 왼쪽 반이면 그 앞, 오른쪽 반이면 그 뒤 (왼쪽 목록은 위·아래 반) */
+  const isAfter = (e, li) => {
+    const r = li.getBoundingClientRect();
+    return li.classList.contains("od-r") ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2;
+  };
+  const atOf = (e, li) => +li.dataset.i + (isAfter(e, li) ? 1 : 0);
+  const clear = () => document.querySelectorAll(".od .ins-b, .od .ins-a").forEach(li => li.classList.remove("ins-b", "ins-a"));
+  /* 같은 자리를 세 곳에 모두 표시 — 끌고 있는 곳은 커서가 있는 쪽(줄 끝 칸의 오른쪽도 그대로),
+     나머지 두 곳은 at번 칸의 앞 (맨 뒤면 마지막 칸의 뒤) */
+  const mark = (e, li) => {
+    clear();
+    const after = isAfter(e, li), at = atOf(e, li), here = li.closest("ol");
+    li.classList.add(after ? "ins-a" : "ins-b");
+    const last = at >= ITEMS.length, i = last ? ITEMS.length - 1 : at;
+    areas.filter(ol => ol !== here).forEach(ol => { const x = ol.querySelector(`[data-i="${i}"]`); if (x) x.classList.add(last ? "ins-a" : "ins-b"); });
+  };
   areas.forEach(ol => {
     ol.addEventListener("dragstart", e => {
       const li = e.target.closest("[data-i]"); if (!li) return;
@@ -130,13 +148,13 @@ function bind(){
       if (drag < 0) return;
       const li = e.target.closest("[data-i]"); if (!li) return;
       e.preventDefault(); e.dataTransfer.dropEffect = "move";
-      mark(+li.dataset.i);
+      mark(e, li);
     });
     ol.addEventListener("drop", e => {
       if (drag < 0) return;
       const li = e.target.closest("[data-i]"); if (!li) return;
       e.preventDefault(); e.stopPropagation();
-      move(drag, +li.dataset.i); drag = -1; clear(); redraw();
+      move(drag, atOf(e, li)); drag = -1; clear(); redraw();
     });
   });
   /* 빼기 */

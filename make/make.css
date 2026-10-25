@@ -555,7 +555,7 @@ body.fit #qbody > .compose{flex:1;min-height:0;display:grid;grid-template-column
 .psd.od{grid-template-columns:320px minmax(0,1fr)}
 .od-side{display:flex;flex-direction:column}
 .od-bh{padding:12px 0 8px;margin-top:8px}
-.od-up{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:40vh;overflow:auto}
+.od-up{list-style:none;margin:0;padding:5px 0;display:flex;flex-direction:column;gap:4px;max-height:40vh;overflow:auto}
 .od-up:empty{display:none}
 .od-r{display:flex;align-items:center;gap:8px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:grab;flex:none}
 .od-r img{width:40px;height:40px;object-fit:contain;background:conic-gradient(#fff 25%,#eee 0 50%,#fff 0 75%,#eee 0) 0 0/8px 8px}
@@ -567,17 +567,26 @@ body.fit #qbody > .compose{flex:1;min-height:0;display:grid;grid-template-column
 .od-tools b{flex:none}
 .od-tools .sub2{margin-left:auto}
 .od-views{display:grid;grid-template-columns:6fr 4fr;gap:16px;padding:12px 14px;min-height:0;align-items:start}
-.od-view{min-width:0;display:flex;flex-direction:column;min-height:0;max-height:100%}
-.od-view h3{font-size:16px;color:var(--muted);margin:0 0 8px;flex:none}
-.od-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:6px;overflow:auto;min-height:0;align-content:start}
+/* 스크롤은 바깥 상자에서 — 칸 묶음 자체에 높이 제한을 걸면 줄 높이가 눌려 칸끼리 겹침 */
+.od-view{min-width:0;min-height:0;max-height:100%;overflow:auto;padding:0 6px 4px}
+.od-view h3{font-size:16px;color:var(--muted);margin:0;padding:0 0 8px;position:sticky;top:0;z-index:2;background:#fff}
+.od-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:6px;align-content:start}
 .od-grid .ps-empty{grid-column:1 / -1;padding:40px 10px;border:1.5px dashed var(--line);border-radius:10px}
-.od-c{position:relative;aspect-ratio:1;border:1px solid var(--line);border-radius:6px;background:var(--od-bg);cursor:grab;overflow:hidden}
-.od-c img{width:100%;height:100%;object-fit:contain;display:block}
+.od-c{position:relative;aspect-ratio:1;border:1px solid var(--line);border-radius:6px;background:var(--od-bg);cursor:grab}
+.od-c img{width:100%;height:100%;object-fit:contain;display:block;border-radius:5px}
 .od-c .od-n{position:absolute;left:3px;top:2px;min-width:0;text-align:left;font-size:12px;color:#fff;background:rgba(23,24,26,.55);border-radius:4px;padding:0 4px}
 .od-c .od-x{position:absolute;right:2px;top:2px;background:rgba(255,255,255,.85);font-size:15px;padding:0 5px;display:none}
 .od-c:hover .od-x{display:block}
 .od .dragging{opacity:.35}
-.od .tgt{outline:3px solid #1d5fd1;outline-offset:-3px}
+/* 들어갈 자리 표시 — 칸 사이 세로줄(칸 간격 6px의 가운데), 왼쪽 목록은 줄 사이 가로줄(간격 4px의 가운데) */
+.od .ins-b::before, .od .ins-a::after{content:"";position:absolute;z-index:3;background:#1d5fd1;border-radius:2px;pointer-events:none}
+.od-c.ins-b::before, .od-c.ins-a::after{top:-3px;bottom:-3px;width:4px}
+.od-c.ins-b::before{left:-5px}
+.od-c.ins-a::after{right:-5px}
+.od-r{position:relative}
+.od-r.ins-b::before, .od-r.ins-a::after{left:0;right:0;height:3px}
+.od-r.ins-b::before{top:-4.5px}
+.od-r.ins-a::after{bottom:-4.5px}
 .od-main.over, .od-up.over{outline:3px dashed #1d5fd1;outline-offset:-3px}
 body.fit #qbody > .od{flex:1;min-height:0;align-items:stretch;grid-template-rows:minmax(0,1fr)}
 body.fit .od-main{display:flex;flex-direction:column;min-height:0}
