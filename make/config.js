@@ -158,6 +158,10 @@ window.EC_CONFIG = {
     { id: "export", step: 14, name: "완성 파일 받기", type: "export", wide: true, free: true, fit: true,
       q: "완성한 PSD를 PNG로 바꿔 받아봅시다.",
       sub: "채색과 테두리까지 끝낸 PSD를 올리면, 맨 위의 폴더마다 PNG 한 장씩 ZIP으로 받을 수 있어요. 파일 이름은 폴더 이름이에요." },
+
+    { id: "order", step: 15, name: "순서 정하기", type: "order", wide: true, free: true, fit: true,
+      q: "이모트 순서를 정해 봅시다.",
+      sub: "완성한 이미지(PNG·GIF·WebP)를 올리고 끌어서 옮기면, 가로 6칸·4칸 보기에 바로 반영돼요. 정한 순서대로 번호를 붙여 받을 수 있어요." },
   ],
 
   /* 아직 만들지 않은 단계 (왼쪽 목록에 흐리게) */

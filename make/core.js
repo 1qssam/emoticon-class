@@ -31,6 +31,7 @@ EC.blank = () => ({
   texts: {},                                    // 13단계 글씨: { 페이지 이름: [{ t, font, size, color, sw, sc, x, y }] }
   textStyle: null,                              // 마지막으로 쓴 글씨 모양
   exportMade: false,                            // 14단계에서 ZIP을 받은 적 있는지 (목록의 ✓ 표시용)
+  orderMade: false,                             // 15단계에서 순서대로 받은 적 있는지 (목록의 ✓ 표시용)
   savedAt: null,
 });
 
