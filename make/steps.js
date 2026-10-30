@@ -44,7 +44,7 @@ const lockedAt = i => !(SC[i] && SC[i].free) && i > openUpTo();      // free 단
 const curIndex = () => SC.findIndex(s => s.id === st.screen);
 
 function go(id){
-  st.screen = id; imgMsg = null; EC.save(st);
+  st.screen = id; imgMsg = null; hintOpen = false; EC.save(st);
   drawNav(); render();
   $("main").scrollTop = 0;
 }
@@ -108,12 +108,18 @@ function recapHtml(sc, side){
   if (side) return `<div class="recap has-side${sc.stick ? " stick" : ""}"><div class="rc-main">${rows.join("")}</div><div class="rc-side">${side}</div></div>`;
   return `<div class="recap${sc.stick ? " stick" : ""}">${rows.join("")}</div>`;
 }
+let hintOpen = false;                           // 같은 화면을 다시 그려도 도움말을 열어 둠
+const pairAt = (ax, [a, b]) => ax.findIndex(x => (x.a === a && x.b === b) || (x.a === b && x.b === a));
 function hintHtml(sc){
   const h = sc.hint;
   if (!h) return "";
   const text = (h.text || []).map(p => `<p>${R(p)}</p>`).join("");
   const chips = h.chips ? `<div class="chips">${h.chips.map(c => `<button class="chip" data-fill="${esc(c)}">${esc(c)}</button>`).join("")}</div>` : "";
-  return `<button class="stuck" id="stuck">${esc(C.STUCK || "막혀요")}</button><div class="hintbox" id="hintbox" hidden>${text}${chips}</div>`;
+  const ax = h.pairs ? EC.axes(st, sc.key) : [];
+  const pairs = h.pairs ? `<div class="chips">${h.pairs.map((p, i) =>
+    `<button class="chip" data-pair="${i}" aria-pressed="${pairAt(ax, p) >= 0}">${esc(p[0])} ↔ ${esc(p[1])}</button>`).join("")}</div>
+    <p class="pairnote" id="pairnote" hidden>항목은 ${MAX_AX}개까지예요. 하나를 지우고 다시 눌러 주세요.</p>` : "";
+  return `<button class="stuck" id="stuck" aria-expanded="${hintOpen}">${esc(C.STUCK || "막혀요")}</button><div class="hintbox" id="hintbox" ${hintOpen ? "" : "hidden"}>${text}${chips}${pairs}</div>`;
 }
 function footHtml(){
   const i = curIndex();
@@ -135,7 +141,9 @@ function bindCommon(sc){
   const i = curIndex();
   if ($("prev")) $("prev").onclick = () => go(i > 0 ? SC[i - 1].id : SC[0].id);
   if ($("next")) $("next").onclick = () => { if (done(sc) && !isLocked() && i + 1 < SC.length) go(SC[i + 1].id); };
-  if ($("stuck")) $("stuck").onclick = () => { $("hintbox").hidden = !$("hintbox").hidden; };
+  if ($("stuck")) $("stuck").onclick = () => {
+    hintOpen = $("hintbox").hidden; $("hintbox").hidden = !hintOpen; $("stuck").setAttribute("aria-expanded", hintOpen);
+  };
   updateFoot();
 }
 
@@ -211,6 +219,18 @@ function bindScales(sc){
     ax.push({ a: "", b: "", v: null }); rerender();
     const ins = document.querySelectorAll(".axin"); if (ins.length) ins[ins.length - 2].focus();
   };
+  /* '막힐 땐 클릭' 반대말: 누르면 빈 항목을 채우거나 새로 더하고, 이미 있으면 뺍니다 */
+  document.querySelectorAll("[data-pair]").forEach(b => b.onclick = () => {
+    const [a, z] = sc.hint.pairs[+b.dataset.pair], at = pairAt(ax, [a, z]);
+    if (at >= 0) ax.splice(at, 1);
+    else {
+      const empty = ax.findIndex(x => !String(x.a).trim() && !String(x.b).trim());
+      if (empty >= 0) Object.assign(ax[empty], { a, b: z });
+      else if (ax.length < MAX_AX) ax.push({ a, b: z, v: null });
+      else { $("pairnote").hidden = false; return; }
+    }
+    rerender();
+  });
   $("axReset").onclick = () => {
     if (!confirm("처음 항목으로 되돌릴까요? 고른 수치도 지워져요.")) return;
     st[sc.key] = EC.defaultAxes(sc.key); rerender();
