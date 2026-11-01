@@ -191,7 +191,7 @@ function body(sc){
       <div class="ps-fld"><h3>받을 파일 이름</h3><div class="ps-fname"><input id="psName" value="${esc(fileBase)}" placeholder="${esc(defName())}"><span>.psd</span></div></div>
       <div class="ps-fld"><h3>그림을 넣을 자리</h3>
         <div class="row">${[["sketch", "스케치 레이어로"], ["line", "선 레이어로"]].map(([v, t]) => `<button class="chip" data-place="${v}" aria-pressed="${s.place === v}">${t}</button>`).join("")}</div>
-        <ul class="ps-tree"><li>📁 1 <span class="sub2">(폴더마다 같은 구성)</span></li>${L.names.slice().reverse().map(n => `<li class="in${n === L.put ? " hl" : ""}${n === TEXT ? " tx" : ""}">${n}${n === L.put && L.opacity ? ` <span class="sub2">(불투명도 ${Math.round(L.opacity * 100)}%)</span>` : ""}</li>`).join("")}</ul></div>
+        <ul class="ps-tree"><li>📁 1 <span class="sub2">(폴더마다 같은 구성)</span></li>${L.names.slice().reverse().map(n => `<li class="in${n === L.put ? " hl" : ""}${n === TEXT ? " ps-txl" : ""}">${n}${n === L.put && L.opacity ? ` <span class="sub2">(불투명도 ${Math.round(L.opacity * 100)}%)</span>` : ""}</li>`).join("")}</ul></div>
       <div class="ps-fld"><h3>폴더 이름 뒤에 붙일 내용</h3>
         <div class="row"><button class="btn" id="psFill">${EC.stepNo("plan")}단계 ${SW()} 내용 넣기</button><button class="btn" id="psEmpty">모두 비우기</button></div></div>
       <div class="ps-fld"><label class="ps-opt"><input type="checkbox" id="psOnly" ${s.onlyFirst ? "checked" : ""}> 1번 폴더만 보이게 (나머지는 눈 끄기)</label></div>

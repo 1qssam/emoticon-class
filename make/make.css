@@ -353,7 +353,7 @@ body.wide .card{max-width:1500px}
 .ps-tree li.in{padding-left:20px;color:var(--muted)}
 .ps-tree li.in.hl{color:var(--ink);font-weight:700}
 .ps-tree li.in.hl::after{content:"← 올린 그림";font-weight:400;color:var(--muted);margin-left:6px}
-.ps-tree li.in.tx::after{content:"← 손글씨 (PSD·MDP로 올렸을 때)";color:var(--muted);margin-left:6px}
+.ps-tree li.in.ps-txl::after{content:"← 손글씨 (PSD·MDP로 올렸을 때)";color:var(--muted);margin-left:6px}
 .ps-opt{display:flex;align-items:center;gap:8px;font-size:17px;cursor:pointer}
 .ps-opt input{width:20px;height:20px}
 .ps-get{width:100%;margin-top:14px;padding:13px;font-size:18px}
