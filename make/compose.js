@@ -33,6 +33,7 @@ function loadKw(){
 let sel = -1;                 // 지금 고른 줄
 let q = "";                   // 찾기
 const openSecs = new Set();   // 펼친 묶음 (처음엔 모두 접힘)
+const openCats = new Set();   // 펼친 하위 분류 "묶음번호/분류번호" (처음엔 모두 접힘)
 let hintOpen = false;
 let keep = { k: 0, c: 0 };    // 다시 그릴 때 두 칸의 스크롤 자리
 let cw = null;                // 오른쪽 칸 너비(px)
@@ -104,8 +105,11 @@ function body(sc){
   const ordered = ws => score ? ws.map((w, i) => [w, score(w), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map(x => x[0]) : ws;
   /* 모든 묶음을 그려 두고, 접힌 묶음은 화면에서만 숨깁니다 (찾기는 글자를 칠 때마다 화면에서 바로 거름) */
   const secs = K().sections.map((s, si) => {
-    const cats = s.cats.map(c => `<div class="kcat"><h4>${esc(c.name)}</h4><div class="kws">${ordered(c.words).map(w =>
-        `<button class="kw${U.has(w) ? " used" : ""}${score && score(w) ? " tg" : ""}" draggable="true" data-kw="${esc(w)}">${esc(w)}</button>`).join("")}</div></div>`).join("");
+    const cats = s.cats.map((c, ci) => {
+      const key = si + "/" + ci, copen = openCats.has(key), ntg = score ? c.words.filter(w => score(w)).length : 0;
+      return `<div class="kcat${copen ? " open" : ""}"><button class="kch" data-cat="${key}"><span>${esc(c.name)} <span class="kcn">${c.words.length}</span>${ntg ? ` <span class="kctg" title="선택한 연령대, 스타일에서 자주 보이는 표현 ${ntg}개">자주 ${ntg}</span>` : ""}</span><span class="arr">${copen ? "▾" : "▸"}</span></button><div class="kws">${ordered(c.words).map(w =>
+        `<button class="kw${U.has(w) ? " used" : ""}${score && score(w) ? " tg" : ""}" draggable="true" data-kw="${esc(w)}">${esc(w)}</button>`).join("")}</div></div>`;
+    }).join("");
     const open = openSecs.has(si);
     return `<div class="ksec${open ? " open" : ""}" data-si="${si}"><button class="ksh" data-sec="${si}">${esc(s.name)} <span class="arr">${open ? "▾" : "▸"}</span></button>
       <div class="kbody">${cats}</div></div>`;
@@ -225,6 +229,13 @@ function bind(sc){
     if (openSecs.has(si)) openSecs.delete(si); else openSecs.add(si);
     const open = openSecs.has(si);
     sec.classList.toggle("open", open); b.querySelector(".arr").textContent = open ? "▾" : "▸";
+  });
+  /* 하위 분류 펼치기·접기 (묶음과 같은 방식) */
+  document.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => {
+    const key = b.dataset.cat, cat = b.closest(".kcat");
+    if (openCats.has(key)) openCats.delete(key); else openCats.add(key);
+    const open = openCats.has(key);
+    cat.classList.toggle("open", open); b.querySelector(".arr").textContent = open ? "▾" : "▸";
   });
   document.querySelectorAll("[data-kw]").forEach(b => {
     b.onclick = () => addWord(b.dataset.kw, sel);
