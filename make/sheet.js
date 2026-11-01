@@ -45,7 +45,7 @@ EC.sheetFonts = async st => {
   const ax = ["tone", "persona"].flatMap(k => EC.axes(st, k).flatMap(x => [x.a, x.b]));
   const all = [st.say, st.role, st.roleAdj, st.who, st.relAdj, EC.shopText ? EC.shopText(st) : "", ...Object.values(lt), ...ax,
     ...st.ages, ...st.tags.map(EC.tagLabel || (t => t)),
-    "원큐쌤의 이모티콘 클래스 이모티콘 기획시트 하고 싶은 말 쓰는 사람 받는 사람 시장 훑어보기 연령대 스타일 분위기 캐릭터 성격 외형 실루엣 비율 얼굴:몸 색 선 디테일 소품 대표 이미지 상품명 단계에서 채워져요 상관없음 이상 litt.ly/1qssam 0123456789.:/()[]—…→·½"].join("");
+    "원큐쌤의 이모티콘 클래스 이모티콘 기획시트 하고 싶은 말 쓰는 사람 받는 사람 시장 훑어보기 연령대 스타일 분위기 캐릭터 성격 외형 디자인 비율 얼굴:몸 색 선 디테일 소품 대표 이미지 상품명 단계에서 채워져요 상관없음 이상 litt.ly/1qssam 0123456789.:/()[]—…→·½"].join("");
   try {
     await Promise.all([400, 600, 700].map(w => document.fonts.load(`${w} 40px Pretendard`, all)));
   } catch (e) {}
@@ -124,11 +124,11 @@ EC.drawSheet = (ctx, st, s, img) => {
   scale(colR - 20, y, "캐릭터 성격", persona);
   y += 50 + Math.max(1, tone.length, persona.length) * 46;
 
-  /* 6. 외형 */
+  /* 6. 캐릭터 디자인 */
   y += 10; rule(y); y += 52;
-  label("캐릭터 외형", M, y);
+  label("캐릭터 디자인", M, y);
   const lt = EC.lookText(st);
-  const items = [["실루엣", lt.silhouette], ["비율", lt.ratio], ["색", lt.color], ["선", lt.line], ["디테일", lt.detail], ["소품", lt.prop]];
+  const items = [["외형", lt.silhouette], ["비율", lt.ratio], ["색", lt.color], ["선", lt.line], ["디테일", lt.detail], ["소품", lt.prop]];
   y += 16;
   for (let r = 0; r < 3; r++){
     let maxEnd = y + 40;

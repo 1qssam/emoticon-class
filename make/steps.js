@@ -53,8 +53,20 @@ function changed(){
   EC.save(st);
   drawNav(); updateFoot(); queueSheet();
 }
-function rerender(){                            // 스크롤 위치를 지키면서 다시 그리기
-  const y = $("main").scrollTop; EC.save(st); drawNav(); render(); $("main").scrollTop = y;
+function rerender(){                            // 스크롤 위치를 지키면서 다시 그리기 (안쪽 칸의 스크롤도)
+  const keep = scrollMap(); EC.save(st); drawNav(); render();
+  scrollMap((key, el) => { if (keep.has(key)) [el.scrollTop, el.scrollLeft] = keep.get(key); });
+}
+/* main과 그 안의 요소를 '이름표(id 또는 태그·클래스 + 순번)'로 훑어서 스크롤 위치를 모으거나(fn 없음) 되돌림 */
+function scrollMap(fn){
+  const main = $("main"), map = new Map(), seen = {};
+  [main, ...main.querySelectorAll("*")].forEach(el => {
+    let key = el.id ? "#" + el.id : el.tagName + "." + el.className;
+    if (!el.id){ seen[key] = (seen[key] || 0) + 1; key += "@" + seen[key]; }
+    if (fn) fn(key, el);
+    else if (el.scrollTop || el.scrollLeft) map.set(key, [el.scrollTop, el.scrollLeft]);
+  });
+  return map;
 }
 
 /* ── 왼쪽 목록 ── */
@@ -103,7 +115,7 @@ function recapHtml(sc, side){
     const lt = EC.lookText(st);
     const look = [lt.silhouette, lt.ratio, lt.color, lt.line, lt.detail && "디테일 " + lt.detail,
       lt.prop && lt.prop !== "없음" && "소품 " + lt.prop].filter(Boolean);
-    if (look.length) rows.push(`<div><b>캐릭터 외형</b>${tagsHtml(look)}</div>`);
+    if (look.length) rows.push(`<div><b>캐릭터 디자인</b>${tagsHtml(look)}</div>`);
   }
   if (side) return `<div class="recap has-side${sc.stick ? " stick" : ""}"><div class="rc-main">${rows.join("")}</div><div class="rc-side">${side}</div></div>`;
   return `<div class="recap${sc.stick ? " stick" : ""}">${rows.join("")}</div>`;
@@ -237,13 +249,13 @@ function bindScales(sc){
   };
 }
 
-/* 5-2단계: 외형 */
+/* 5-2단계: 캐릭터 디자인 */
 function lookBody(){
   const L = C.LOOK, l = st.look, full = l.sil.length >= L.silMax;
   const pick = (name, list, cur) => list.map(([v, t]) => `<button class="chip" data-set="${name}" data-v="${v}" aria-pressed="${cur === v}">${esc(t)}</button>`).join("");
   const custom = l.sil.filter(w => !L.silhouette.includes(w));
   return `<div class="fields">
-    <div class="fld full"><h3>1. 실루엣<small>최대 ${L.silMax}개까지만 골라보세요 (${l.sil.length}/${L.silMax})</small></h3>
+    <div class="fld full"><h3>1. 외형<small>보면 어떤 느낌이 들어야 하나요? 최대 ${L.silMax}개까지 골라보세요 (${l.sil.length}/${L.silMax})</small></h3>
       <div class="row">${L.silhouette.map(w => { const on = l.sil.includes(w);
         return `<button class="chip" data-sil="${esc(w)}" aria-pressed="${on}" ${!on && full ? "disabled" : ""}>${esc(w)}</button>`; }).join("")}
         ${custom.map(w => `<button class="chip mine" data-sil="${esc(w)}" aria-pressed="true" title="눌러서 빼기">${esc(w)} ×</button>`).join("")}</div>

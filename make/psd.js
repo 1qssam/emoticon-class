@@ -1,6 +1,9 @@
 /* ════════════════════════════════════════════════
    12단계 — 스케치 → PSD (예전 emote-sheet 2단계를 옮김)
    · 11단계 비주얼 시트(설정 SHEET_WORD)에 스케치한 PNG를 올리면 칸 안쪽 640×640을 잘라 폴더마다 넣은 PSD를 만듭니다.
+   · PSD·MDP(mdp.js)를 올리면 레이어를 나눠 읽습니다 (11단계 PSD의 레이어 이름 → 없으면 위·가운데·아래 순서)
+       손글씨(이름에 '글씨') → 텍스트 레이어 / 비주얼 시트 → 칸 찾기에만 씀 / 나머지 보이는 레이어 → 모두 합쳐 그림
+   · 목록에서 체크를 끈 폴더는 만들지 않고, 번호는 남은 폴더끼리 1번부터 다시 매깁니다.
    · 비주얼 시트 규격은 plan.js의 EC.PLAN_G. 크기가 바뀐 그림은 막습니다.
    · 폴더 1번이 맨 아래, 폴더 안은 아래에서 위로 테두리 → 색 → (스케치) → 선 → 텍스트
    · PSD 만드는 도구(ag-psd, MIT)는 이 단계에 왔을 때만 받습니다.
@@ -14,11 +17,12 @@ const LAYERS = {
   sketch: { names: ["테두리", "색", "스케치", "선", "텍스트"], put: "스케치", opacity: 0.4 },   // 스케치는 불투명도 40%
   line:   { names: ["테두리", "색", "선", "텍스트"],           put: "선" },
 };
+const TEXT = "텍스트";                                        // PSD로 올린 손글씨가 들어가는 레이어
 const ui = () => EC.ui;
-const SW = () => EC_CONFIG.SHEET_WORD || "비주얼 시트";      // 11단계에서 만든 칸 그림의 이름
+const SW =() => EC_CONFIG.SHEET_WORD || "비주얼 시트";      // 11단계에서 만든 칸 그림의 이름
 const S = () => { const st = ui().st; if (!st.psd) st.psd = { place: "sketch", onlyFirst: true, order: "layer" }; return st.psd; };
 
-let FOLDERS = [];      // [{ cell, data: ImageData, thumb, text }]
+let FOLDERS = [];      // [{ cell, data: ImageData(그림), tdata: ImageData(손글씨) | null, thumb, text, on }]
 let fileBase = "", note = null, agLoading = false;
 
 /* PSD 도구 받기 (한 번만) */
@@ -71,39 +75,88 @@ function hasBorder(ctx, x0, y0){
   return dark(top) >= 0.6 || dark(left) >= 0.6;
 }
 
+/* PSD 레이어 나누기 (맨 위 단계만 봄, 폴더는 통째로 한 장) — { sheet, text: [], draw: [], how } */
+function splitPsd(psd){
+  const all = psd.children || [];
+  const isText = n => /글씨/.test(n.name || "");
+  const isSheet = n => { const nm = String(n.name || "").replace(/\s/g, ""); return nm === SW().replace(/\s/g, "") || /비주얼|시트/.test(nm); };
+  const isDraw = n => String(n.name || "").trim() === EC.PLAN_LAYERS.draw;
+  if (all.some(n => isText(n) || isSheet(n) || isDraw(n))){
+    const sheet = all.filter(isSheet).shift() || (all[0] && all[0].protected && all.length > 1 ? all[0] : null);   // 이름을 바꿨어도 맨 아래 잠긴 레이어면 비주얼 시트
+    return { sheet, text: all.filter(isText), draw: all.filter(n => n !== sheet && !isText(n)), how: "name" };
+  }
+  /* 이름으로 못 찾으면 순서로: 맨 아래 = 비주얼 시트, 맨 위 = 손글씨(레이어가 3개 이상일 때), 나머지 = 그림 */
+  const sheet = all.length > 1 ? all[0] : null, rest = all.slice(sheet ? 1 : 0);
+  const text = rest.length > 1 ? [rest[rest.length - 1]] : [];
+  return { sheet, text, draw: rest.filter(n => !text.includes(n)), how: "order" };
+}
+const canvasOf = (list, W, H) => {               // 레이어 목록 → 캔버스 (숨긴 레이어는 빠짐)
+  const c = EC.renderList(list, W, H); return c.getContext("2d", { willReadFrequently: true });
+};
+
 async function loadSheet(file){
   if (!file) return;
-  if (!/\.png$/i.test(file.name) && file.type !== "image/png"){ note = { kind: "err", text: "PNG 파일만 올릴 수 있어요. 메디방에서 PNG로 저장해서 올려 주세요." }; return ui().rerender(); }
+  const isMdp = /\.mdp$/i.test(file.name), isPsd = isMdp || /\.psd$/i.test(file.name);   // isPsd = 레이어로 나눠 읽는 파일 (PSD·MDP)
+  if (!isPsd && !/\.png$/i.test(file.name) && file.type !== "image/png"){ note = { kind: "err", text: "PNG·PSD·MDP 파일만 올릴 수 있어요." }; return ui().rerender(); }
   note = { kind: "warn", text: "그림을 읽는 중…" }; ui().rerender();
-  let img;
-  try { img = await createImageBitmap(file); } catch (e){ note = { kind: "err", text: "그림을 읽지 못했어요. 파일이 깨지지 않았는지 확인해 주세요." }; return ui().rerender(); }
+  let img, psd, parts = null;
+  try {
+    if (isPsd){ psd = await (isMdp ? EC.readMdpFile(file) : EC.readPsdFile(file)); parts = splitPsd(psd); }
+    else img = await createImageBitmap(file);
+  } catch (e){
+    console.error(e);
+    note = { kind: "err", text: e instanceof EC.MdpError ? e.message
+      : isMdp ? "MDP 파일을 읽지 못했어요. 메디방에서 PSD로 저장해서 올려 주세요. (읽지 못한 MDP를 원큐쌤께 보내 주시면 고쳐 볼게요)"
+      : "그림을 읽지 못했어요. 파일이 깨지지 않았는지 확인해 주세요." };
+    return ui().rerender();
+  }
   const { G, HEAD, STEP_X, STEP_Y } = geom();
-  const W = img.width, H = img.height;
+  const W = isPsd ? psd.width : img.width, H = isPsd ? psd.height : img.height;
   const cols = (W - G.margin * 2 + G.gapX) / STEP_X, rows = (H - G.margin * 2 + G.gapY) / STEP_Y;
   if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1){ note = { kind: "err", text: sizeMessage(W, H) }; return ui().rerender(); }
-  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-  const ctx = cv.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0); if (img.close) img.close();
+  let ctx, tctxAll = null, findCtx;
+  if (isPsd){
+    ctx = canvasOf(parts.draw, W, H);
+    if (parts.text.length) tctxAll = canvasOf(parts.text, W, H);
+    /* 칸 테두리는 비주얼 시트 레이어에서 찾음 (눈을 꺼 뒀어도) — 없으면 전체 그림에서 */
+    findCtx = parts.sheet ? EC.renderTop(psd, parts.sheet).getContext("2d", { willReadFrequently: true }) : canvasOf(psd.children || [], W, H);
+  } else {
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    ctx = findCtx = cv.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0); if (img.close) img.close();
+  }
+  const cv = ctx.canvas;
   const pos = []; let last = -1;
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++){
     const x0 = G.margin + c * STEP_X, y0 = G.margin + r * STEP_Y;
-    pos.push([x0, y0]); if (hasBorder(ctx, x0, y0)) last = pos.length - 1;
+    pos.push([x0, y0]); if (hasBorder(findCtx, x0, y0)) last = pos.length - 1;
   }
   if (last < 0){ note = { kind: "err", text: `칸 테두리를 찾지 못했어요. ${EC.stepNo("plan")}단계에서 받은 ${SW()}에 그린 그림인지 확인해 주세요.` }; return ui().rerender(); }
   const tcv = document.createElement("canvas"); tcv.width = tcv.height = 128;
   const tctx = tcv.getContext("2d");
   let opaque = true;
   const items = (ui().st.plan || {}).items || [];
+  const blank = d => { for (let k = 3; k < d.data.length; k += 4) if (d.data[k]) return false; return true; };
   FOLDERS = [];
   for (let i = 0; i <= last; i++){
     const x = pos[i][0] + G.line, y = pos[i][1] + HEAD + G.line;
     const data = ctx.getImageData(x, y, G.inner, G.inner);
+    let tdata = tctxAll ? tctxAll.getImageData(x, y, G.inner, G.inner) : null;
+    if (tdata && blank(tdata)) tdata = null;
     if (opaque){ for (let k = 3; k < data.data.length; k += 4 * 97) if (data.data[k] < 250){ opaque = false; break; } }
     tctx.clearRect(0, 0, 128, 128); tctx.drawImage(cv, x, y, G.inner, G.inner, 0, 0, 128, 128);
-    FOLDERS.push({ cell: i, data, thumb: tcv.toDataURL("image/png"), text: "", kw: String(items[i] || "").trim() });
+    if (tctxAll) tctx.drawImage(tctxAll.canvas, x, y, G.inner, G.inner, 0, 0, 128, 128);
+    FOLDERS.push({ cell: i, data, tdata, thumb: tcv.toDataURL("image/png"), text: "", kw: String(items[i] || "").trim(), on: true });
   }
-  const msg = `${cols}칸 × ${rows}줄 ${SW()}에서 ${FOLDERS.length}칸을 찾았어요.`;
-  note = opaque ? { kind: "warn", text: msg + " 배경이 투명하지 않고 채워져 있어요. 이대로면 스케치가 아래 색·테두리 레이어를 가립니다. 투명 배경으로 저장한 PNG를 올리면 더 편해요." }
+  const names = l => l.filter(n => !n.hidden).map(n => `'${n.name || "이름 없음"}'`).join(", ") || "없음";
+  const offs = isPsd ? parts.text.concat(parts.draw).filter(n => n.hidden) : [], drafts = offs.filter(n => n.draft).length, off = offs.length - drafts;
+  const msg = `${cols}칸 × ${rows}줄 ${SW()}에서 ${FOLDERS.length}칸을 찾았어요.` + (isPsd
+    ? ` 레이어는 ${parts.how === "name" ? "이름으로" : "순서(위·가운데·아래)로"} 나눴어요 — 손글씨: ${names(parts.text)} / 그림: ${names(parts.draw)} / ${SW()}: ${parts.sheet ? `'${parts.sheet.name || "이름 없음"}'` : "못 찾음"}.`
+      + (off ? ` 눈을 끈 레이어 ${off}개는 뺐어요.` : "") + (drafts ? ` 밑그림 레이어 ${drafts}개는 뺐어요.` : "")
+    : "");
+  note = opaque ? { kind: "warn", text: msg + (isPsd
+      ? " 그림 배경이 투명하지 않고 채워져 있어요. 흰 바탕 레이어가 있으면 눈을 끄고 저장해서 올려 주세요. 이대로면 그림이 아래 색·테두리 레이어를 가립니다."
+      : " 배경이 투명하지 않고 채워져 있어요. 이대로면 스케치가 아래 색·테두리 레이어를 가립니다. 투명 배경으로 저장한 PNG를 올리면 더 편해요.") }
                 : { kind: "ok", text: msg };
   ui().rerender();
 }
@@ -111,43 +164,46 @@ async function loadSheet(file){
 /* 받을 파일 이름을 비워 두면: '(상품명) 작업파일' */
 const defName = () => { const t = String(ui().st.title || "").trim(); return (t ? t + " " : "") + "작업파일"; };
 const reversed = () => S().order === "layer";
-const folderName = i => `${i + 1}` + (FOLDERS[i].text.trim() ? " " + FOLDERS[i].text.trim() : "");
+/* 만들 폴더(체크된 것)만 1번부터 다시 매긴 번호 — 빼는 폴더는 0 */
+const numbers = () => { let n = 0; return FOLDERS.map(f => f.on ? ++n : 0); };
+const folderName = (i, no) => `${no}` + (FOLDERS[i].text.trim() ? " " + FOLDERS[i].text.trim() : "");
 
 function body(sc){
-  const esc = ui().esc, s = S(), L = LAYERS[s.place];
+  const esc = ui().esc, s = S(), L = LAYERS[s.place], nos = numbers(), made = nos.filter(Boolean).length;
   const idx = FOLDERS.map((f, i) => i); if (reversed()) idx.reverse();
   const list = FOLDERS.length ? idx.map(i => {
     const f = FOLDERS[i];
-    return `<li class="ps-fr${s.onlyFirst && i > 0 ? " off" : ""}" data-i="${i}">
+    return `<li class="ps-fr${s.onlyFirst && nos[i] > 1 ? " off" : ""}${f.on ? "" : " skip"}" data-i="${i}">
+      <input type="checkbox" class="ps-on" data-on="${i}" ${f.on ? "checked" : ""} title="체크를 끄면 이 폴더는 만들지 않아요" aria-label="${SW()} ${f.cell + 1}번 칸 폴더 만들기">
       <span class="ps-hd" draggable="true" title="끌어서 순서 바꾸기">⋮⋮</span>
       <img class="ps-th" src="${f.thumb}" alt="${i + 1}번 스케치" draggable="true">
-      <span class="ps-num">${i + 1}</span>
+      <span class="ps-num">${f.on ? nos[i] : "—"}</span>
       <span class="ps-txt"><input value="${esc(f.text)}" data-i="${i}" placeholder="뒤에 붙일 내용 (비우면 번호만)" aria-label="${i + 1}번 폴더 이름 뒤에 붙일 내용">
-        ${f.cell !== i ? `<span class="sub2">${SW()} ${f.cell + 1}번 칸</span>` : ""}</span>
+        ${f.cell + 1 !== nos[i] ? `<span class="sub2">${SW()} ${f.cell + 1}번 칸${f.on ? "" : " · 만들지 않음"}</span>` : ""}</span>
       <span class="ps-act"><button data-mv="${i}" data-d="-1" title="위로">↑</button><button data-mv="${i}" data-d="1" title="아래로">↓</button></span>
     </li>`;
-  }).join("") : `<li class="ps-empty">스케치한 ${SW()}를 올리면 여기에 폴더가 칸 순서대로 나옵니다.<br>(PNG 파일을 여기에 끌어다 놓아도 돼요)</li>`;
+  }).join("") : `<li class="ps-empty">스케치한 ${SW()}를 올리면 여기에 폴더가 칸 순서대로 나옵니다.<br>(PNG·PSD·MDP 파일을 여기에 끌어다 놓아도 돼요)</li>`;
   return `<div class="psd">
     <section class="ps-side">
-      <input type="file" id="psFile" accept=".png,image/png" hidden>
-      <div class="drop up-drop" id="psDrop" role="button" tabindex="0"><span><b>${SW()} PNG</b>를<br>끌어다 놓거나 눌러서 고르세요<br><small>${EC.stepNo("plan")}단계에서 받은 크기 그대로 저장한 파일</small></span></div>
+      <input type="file" id="psFile" accept=".png,image/png,.psd,.mdp" hidden>
+      <div class="drop up-drop" id="psDrop" role="button" tabindex="0"><span><b>${SW()} PNG · PSD · MDP</b>를<br>끌어다 놓거나 눌러서 고르세요<br><small>${EC.stepNo("plan")}단계에서 받은 크기 그대로 저장한 파일 · PSD·MDP는 손글씨가 텍스트 레이어로 따로 들어가요</small></span></div>
       ${note ? `<p class="note ${note.kind}">${esc(note.text)}</p>` : ""}
       <div class="ps-fld"><h3>받을 파일 이름</h3><div class="ps-fname"><input id="psName" value="${esc(fileBase)}" placeholder="${esc(defName())}"><span>.psd</span></div></div>
       <div class="ps-fld"><h3>그림을 넣을 자리</h3>
         <div class="row">${[["sketch", "스케치 레이어로"], ["line", "선 레이어로"]].map(([v, t]) => `<button class="chip" data-place="${v}" aria-pressed="${s.place === v}">${t}</button>`).join("")}</div>
-        <ul class="ps-tree"><li>📁 1 <span class="sub2">(폴더마다 같은 구성)</span></li>${L.names.slice().reverse().map(n => `<li class="in${n === L.put ? " hl" : ""}">${n}${n === L.put && L.opacity ? ` <span class="sub2">(불투명도 ${Math.round(L.opacity * 100)}%)</span>` : ""}</li>`).join("")}</ul></div>
+        <ul class="ps-tree"><li>📁 1 <span class="sub2">(폴더마다 같은 구성)</span></li>${L.names.slice().reverse().map(n => `<li class="in${n === L.put ? " hl" : ""}${n === TEXT ? " tx" : ""}">${n}${n === L.put && L.opacity ? ` <span class="sub2">(불투명도 ${Math.round(L.opacity * 100)}%)</span>` : ""}</li>`).join("")}</ul></div>
       <div class="ps-fld"><h3>폴더 이름 뒤에 붙일 내용</h3>
         <div class="row"><button class="btn" id="psFill">${EC.stepNo("plan")}단계 ${SW()} 내용 넣기</button><button class="btn" id="psEmpty">모두 비우기</button></div></div>
       <div class="ps-fld"><label class="ps-opt"><input type="checkbox" id="psOnly" ${s.onlyFirst ? "checked" : ""}> 1번 폴더만 보이게 (나머지는 눈 끄기)</label></div>
-      <button class="btn solid ps-get" id="psGet" ${FOLDERS.length ? "" : "disabled"}>PSD 다운받기</button>
+      <button class="btn solid ps-get" id="psGet" ${made ? "" : "disabled"}>PSD 다운받기</button>
     </section>
     <section class="ps-main">
-      <div class="ps-bh"><b>폴더 목록 <span class="sub2">${FOLDERS.length ? FOLDERS.length + "개" : ""}</span></b>
+      <div class="ps-bh"><b>폴더 목록 <span class="sub2">${FOLDERS.length ? (made === FOLDERS.length ? made + "개" : `${FOLDERS.length}개 중 ${made}개 만들기`) : ""}</span></b>
         <label>보기 <select id="psOrder"><option value="layer" ${s.order === "layer" ? "selected" : ""}>레이어 창처럼 (위가 마지막 번호)</option><option value="num" ${s.order === "num" ? "selected" : ""}>1번부터</option></select></label></div>
       <ol class="ps-list" id="psList">${list}</ol>
     </section>
   </div>
-  <p class="sub2" style="margin-top:10px">올린 그림은 이 브라우저 안에서만 처리되고 어디로도 전송되지 않습니다. 칸 테두리 안쪽 640×640만 잘라 640×640(72dpi) PSD의 폴더마다 넣습니다. 폴더 번호는 목록 위치대로 붙고, 썸네일이나 ⋮⋮를 끌어 순서를 바꾸면 그림과 붙인 내용이 함께 옮겨집니다.</p>`;
+  <p class="sub2" style="margin-top:10px">올린 그림은 이 브라우저 안에서만 처리되고 어디로도 전송되지 않습니다. 칸 테두리 안쪽 640×640만 잘라 640×640(72dpi) PSD의 폴더마다 넣습니다. 폴더 번호는 목록 위치대로 붙고, 썸네일이나 ⋮⋮를 끌어 순서를 바꾸면 그림과 붙인 내용이 함께 옮겨집니다. 체크를 끈 폴더는 만들지 않고, 남은 폴더끼리 1번부터 번호를 다시 매깁니다.</p>`;
 }
 
 function bind(){
@@ -183,9 +239,10 @@ function bind(){
     ui().rerender();
   };
   $("psEmpty").onclick = () => { FOLDERS.forEach(f => { f.text = ""; }); ui().rerender(); };
-  $("psList").querySelectorAll("input").forEach(inp => {
+  $("psList").querySelectorAll("[data-on]").forEach(c => c.onchange = () => { FOLDERS[+c.dataset.on].on = c.checked; ui().rerender(); });
+  $("psList").querySelectorAll(".ps-txt input").forEach(inp => {
     inp.oninput = () => { FOLDERS[+inp.dataset.i].text = inp.value; };
-    inp.onkeydown = e => { if (e.key !== "Enter" || e.isComposing) return; e.preventDefault(); const all = [...$("psList").querySelectorAll("input")], k = all.indexOf(inp); const n = all[k + (e.shiftKey ? -1 : 1)]; if (n) n.focus(); else inp.blur(); };
+    inp.onkeydown = e => { if (e.key !== "Enter" || e.isComposing) return; e.preventDefault(); const all = [...$("psList").querySelectorAll(".ps-txt input")], k = all.indexOf(inp); const n = all[k + (e.shiftKey ? -1 : 1)]; if (n) n.focus(); else inp.blur(); };
   });
   const moveF = (from, to) => { if (to < 0 || to >= FOLDERS.length || to === from) return; const [f] = FOLDERS.splice(from, 1); FOLDERS.splice(to, 0, f); ui().rerender(); };
   document.querySelectorAll("[data-mv]").forEach(b => b.onclick = () => { const i = +b.dataset.mv; moveF(i, i + (+b.dataset.d) * (reversed() ? -1 : 1)); });
@@ -229,17 +286,23 @@ function buildPsd(ag){
   const comp = document.createElement("canvas"); comp.width = comp.height = N;
   const cctx = comp.getContext("2d"), tmp = document.createElement("canvas"); tmp.width = tmp.height = N;
   const tctx = tmp.getContext("2d");
-  cctx.globalAlpha = L.opacity || 1;                       // 합친 미리보기 그림도 레이어 불투명도대로
-  FOLDERS.forEach((f, i) => { if (s.onlyFirst && i > 0) return; tctx.clearRect(0, 0, N, N); tctx.putImageData(f.data, 0, 0); cctx.drawImage(tmp, 0, 0); });
-  cctx.globalAlpha = 1;
+  const nos = numbers(), use = FOLDERS.map((f, i) => i).filter(i => nos[i]);   // 체크된 폴더만
+  const draw = d => { tctx.clearRect(0, 0, N, N); tctx.putImageData(d, 0, 0); cctx.drawImage(tmp, 0, 0); };
+  use.forEach(i => {                                       // 합친 미리보기 그림도 레이어 불투명도대로
+    if (s.onlyFirst && nos[i] > 1) return;
+    cctx.globalAlpha = L.opacity || 1; draw(FOLDERS[i].data);
+    cctx.globalAlpha = 1; if (FOLDERS[i].tdata) draw(FOLDERS[i].tdata);
+  });
   return ag.writePsd({
     width: N, height: N,
     imageResources: { resolutionInfo: EC.PSD_RES },
     imageData: cctx.getImageData(0, 0, N, N),
-    children: FOLDERS.map((f, i) => ({                    // 배열 앞쪽 = 레이어 창 아래쪽
-      name: folderName(i), opened: false, hidden: s.onlyFirst && i > 0,
-      children: L.names.map(n => n === L.put ? Object.assign({ name: n, top: 0, left: 0, imageData: f.data }, L.opacity ? { opacity: L.opacity } : {}) : { name: n }),
-    })),
+    children: use.map(i => {                              // 배열 앞쪽 = 레이어 창 아래쪽
+      const f = FOLDERS[i];
+      return { name: folderName(i, nos[i]), opened: false, hidden: s.onlyFirst && nos[i] > 1,
+        children: L.names.map(n => n === L.put ? Object.assign({ name: n, top: 0, left: 0, imageData: f.data }, L.opacity ? { opacity: L.opacity } : {})
+                                 : n === TEXT && f.tdata ? { name: n, top: 0, left: 0, imageData: f.tdata } : { name: n }) };
+    }),
   }, { noBackground: true });
 }
 

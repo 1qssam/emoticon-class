@@ -2,6 +2,7 @@
    11단계 — 비주얼 시트 만들기 (이름은 설정의 SHEET_WORD) (예전 plan / emote-sheet 1단계를 옮김)
    · 10단계 구성이 칸마다 들어옵니다 (1번 = 대표 이미지). 고치거나 처음부터 적어도 됩니다.
    · 칸 안쪽 640×640, 선 3px. 이미지로 받을 때 72dpi
+   · 받기는 PNG 한 장, 또는 PSD(위부터 손글씨 · 그림 · 비주얼 시트(잠금) 레이어 3개) — 12단계가 이 레이어 이름으로 나눠 읽습니다
    · 한 줄 6칸 고정. 파일 이름은 9단계 상품명을 씁니다.
    st.plan = { items: [...], cols: 6, clear: true }
    ════════════════════════════════════════════════ */
@@ -67,7 +68,7 @@ function body(){
   <p class="sub2" style="margin-top:10px">칸 안쪽 640×640px · 선 3px · 72dpi · Enter 아래 칸(끝이면 새 칸) · Shift+Enter 위 칸 · ⋮⋮나 미리보기 칸을 끌어 순서 변경 · 미리보기 글자를 눌러 바로 고치기</p>
   <div class="ov" id="plOv" hidden role="dialog" aria-label="${EC_CONFIG.SHEET_WORD} 이미지 미리보기">
     <div class="ov-bar"><button id="plZout" title="축소">−</button><span id="plPct"></span><button id="plZin" title="확대">+</button>
-      <button class="get" id="plGet">이미지 다운받기</button><button id="plClose" title="닫기 (Esc)">×</button></div>
+      <button class="get" id="plGet" title="한 장짜리 이미지">PNG 받기</button><button class="get" id="plGetPsd" title="손글씨 · 그림 · ${EC_CONFIG.SHEET_WORD} 레이어로 나뉜 파일">PSD 받기</button><button id="plClose" title="닫기 (Esc)">×</button></div>
     <div class="ov-msg" id="plMsg">이미지를 만드는 중…</div>
     <div class="ov-stage"><img id="plImg" alt="${EC_CONFIG.SHEET_WORD} 이미지"></div>
   </div>`;
@@ -165,6 +166,8 @@ function bind(){
   $("plGrid").addEventListener("dragover", e => {
     if (!e.dataTransfer.types.includes("text/x-plan")) return;
     e.preventDefault(); clearG();
+    const [c0, c1] = $("plGrid").querySelectorAll(".pl-cell");   // 칸 사이 가로 간격의 절반 → 표시선을 한가운데에
+    if (c0 && c1) $("plGrid").style.setProperty("--gx", Math.max(0, c1.getBoundingClientRect().left - c0.getBoundingClientRect().right) / 2 + "px");
     const g = gridAt(e); if (g.i >= 0) $("plGrid").querySelectorAll(".pl-cell")[g.i].classList.add(g.left ? "before" : "after");
   });
   $("plGrid").addEventListener("dragleave", e => { if (!$("plGrid").contains(e.relatedTarget)) clearG(); });
@@ -202,6 +205,12 @@ function bind(){
     $("plImg").onload = () => { $("plMsg").hidden = true; $("plImg").hidden = false; showZoom(); };
     $("plImg").src = url;
     $("plGet").onclick = () => EC.download(blob, EC.planFileName(ui().st));
+    $("plGetPsd").onclick = async () => {
+      const b = $("plGetPsd"); b.disabled = true; b.textContent = "만드는 중…";
+      try { EC.download(await EC.makePlanPsd(ui().st), EC.planFileName(ui().st).replace(/\.png$/, ".psd")); }
+      catch (e){ console.error(e); alert("PSD를 만들다가 문제가 생겼어요.\n" + (e.message || e)); }
+      b.disabled = false; b.textContent = "PSD 받기";
+    };
   };
   $("plClose").onclick = close;
   $("plOv").onclick = e => { if (e.target === $("plOv") || e.target.classList.contains("ov-stage")) close(); };
@@ -220,8 +229,8 @@ function fitText(ctx, text, max){
   while (t.length > 1 && ctx.measureText(t + "…").width > max) t = t.slice(0, -1);
   return t + "…";
 }
-/* 기획표 PNG (72dpi) */
-EC.makePlanImage = async st => {
+/* 기획표 그림 (캔버스) */
+async function planCanvas(st){
   const p = st.plan, list = trimmed(), n = list.length, cols = COLS;
   const L = EC.planLayout(n, cols);
   const labels = list.map((w, i) => `${i + 1}. ${String(w).trim()}`);
@@ -237,8 +246,30 @@ EC.makePlanImage = async st => {
     ctx.strokeStyle = G.color; ctx.lineWidth = G.line;
     ctx.strokeRect(x + G.line / 2, y + L.head + G.line / 2, G.inner + G.line, G.inner + G.line);
   }
+  return cv;
+}
+/* 기획표 PNG (72dpi) */
+EC.makePlanImage = async st => {
+  const cv = await planCanvas(st);
   const blob = await new Promise(res => cv.toBlob(res, "image/png"));
   return EC.pngWithDpi(blob, 72);
+};
+/* 기획표 PSD (72dpi) — 아래부터 비주얼 시트(잠금) · 그림(빈) · 손글씨(빈). 레이어 이름은 EC.PLAN_LAYERS */
+EC.PLAN_LAYERS = { text: "손글씨", draw: "그림" };
+EC.makePlanPsd = async st => {
+  const cv = await planCanvas(st), ag = await EC.loadAgPsd();
+  const W = cv.width, H = cv.height, img = cv.getContext("2d").getImageData(0, 0, W, H);
+  const buf = ag.writePsd({
+    width: W, height: H,
+    imageResources: { resolutionInfo: EC.PSD_RES },
+    imageData: img,
+    children: [
+      { name: EC_CONFIG.SHEET_WORD || "비주얼 시트", top: 0, left: 0, imageData: img, protected: { transparency: true, composite: true, position: true } },
+      { name: EC.PLAN_LAYERS.draw },
+      { name: EC.PLAN_LAYERS.text },
+    ],
+  }, { noBackground: true });
+  return new Blob([buf], { type: "application/octet-stream" });
 };
 EC.planFileName = st => {
   const t = EC.safeName(st.title);
