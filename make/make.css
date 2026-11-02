@@ -91,6 +91,10 @@ textarea.ans{font-size:20px;resize:vertical;min-height:120px;line-height:1.6}
 .chip:hover{border-color:var(--ink)}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 
+/* 처음 안내 */
+.intro-list{margin:6px 0 0;padding-left:1.1em;font-size:21px;line-height:1.6;word-break:keep-all}
+.intro-list li{margin:12px 0}
+.intro + .foot .btn{margin-left:auto}
 .foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:36px;padding-top:22px;border-top:1px solid var(--line)}
 .foot .btn{padding:14px 34px;font-size:20px;border-radius:12px}
 .foot .why{font-size:17px;color:var(--muted);margin-left:auto;margin-right:10px}

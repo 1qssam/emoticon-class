@@ -13,6 +13,8 @@ const SC = C.SCREENS;
 const MAX_AX = C.AXES_MAX || 3;
 
 let st = EC.load();
+/* 처음 안내: 브라우저에 저장된 작업이 없을 때만 */
+let intro = (() => { try { return !localStorage.getItem(EC.KEY); } catch (e) { return true; } })();
 const R = s => EC.rich(s, st);                 // 화면용 (값 채우기 + 파란 굵은 글씨)
 
 /* ── 다 적었는지 ── */
@@ -44,6 +46,7 @@ const lockedAt = i => !(SC[i] && SC[i].free) && i > openUpTo();      // free 단
 const curIndex = () => SC.findIndex(s => s.id === st.screen);
 
 function go(id){
+  intro = false;
   st.screen = id; imgMsg = null; hintOpen = false; EC.save(st);
   drawNav(); render();
   $("main").scrollTop = 0;
@@ -160,7 +163,21 @@ function bindCommon(sc){
 }
 
 /* ── 화면 그리기 ── */
+function introHtml(){
+  const I = C.INTRO;
+  return `<div class="intro"><h2>${esc(I.title)}</h2>
+    <ul class="intro-list">${I.items.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>
+    <div class="foot"><button class="btn solid" id="introGo">${esc(I.button)}</button></div>`;
+}
+
 function render(){
+  if (intro && C.INTRO){
+    document.body.classList.remove("wide", "fit");
+    $("card").innerHTML = introHtml();
+    $("introGo").onclick = () => go(SC[0].id);
+    queueSheet();
+    return;
+  }
   if (st.screen === "end") st.screen = SC[SC.length - 1].id;     // 예전 판의 '마무리' 화면
   if (curIndex() < 0){ st.screen = SC[Math.min(openUpTo(), SC.length - 1)].id; EC.save(st); drawNav(); }
   const sc = SC[curIndex()], locked = isLocked();
@@ -614,12 +631,12 @@ $("loadFile").onchange = async () => {
   try {
     const s = EC.fromText(await f.text());
     if (st.say && !confirm("지금 적어 둔 내용을 불러온 파일로 바꿀까요?")) return;
-    st = s; EC.save(st); drawNav(); render();
+    st = s; intro = false; EC.save(st); drawNav(); render();
   } catch (e){ alert("불러오지 못했어요.\n" + (e.message || e)); }
 };
 $("reset").onclick = () => {
   if (!confirm("적은 내용을 모두 지우고 처음부터 할까요?\n(지우기 전에 '작업 저장'으로 받아 둘 수 있어요)")) return;
-  st = EC.blank(); EC.save(st); drawNav(); render();
+  st = EC.blank(); intro = true; EC.save(st); drawNav(); render();
 };
 
 /* 다른 파일에서 화면을 더할 때 쓰는 도구 */
