@@ -52,8 +52,10 @@ EC.sheetFonts = async st => {
 };
 
 /* 기획시트를 그립니다. s = 배율 (1이면 1240×1754) */
-EC.drawSheet = (ctx, st, s, img) => {
+/* hl: 화면 미리보기에서만 강조할 칸 (say, me, you, tone, persona, look, market, shop). 받기·인쇄에는 안 넘깁니다 */
+EC.drawSheet = (ctx, st, s, img, hl) => {
   s = s || 1;
+  const area = {};                                              // 칸마다 [x, 위, 너비, 아래]
   ctx.save();
   ctx.setTransform(s, 0, 0, s, 0, 0);
   ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
@@ -82,12 +84,14 @@ EC.drawSheet = (ctx, st, s, img) => {
 
   /* 1. 하고 싶은 말 */
   let y = 268;
+  const colR = M + CW / 2 + 40;
+  area.say = [M, y - 42, CW];
   label("하고 싶은 말", M, y);
   y = value(st.say, M, y + 62, 700, 50, CW, 2, 64);
 
   /* 2·3. 말하는 나 → 받는 사람 */
-  y += 60; rule(y); y += 52;
-  const colR = M + CW / 2 + 40;
+  y += 60; area.say[3] = y - 10; rule(y); y += 52;
+  area.me = [M, y - 42, CW / 2 - 40]; area.you = [colR - 20, y - 42, CW / 2 - 20];
   label("쓰는 사람", M, y);
   label("받는 사람", colR, y);
   const me = [st.roleAdj, st.role].map(x => String(x || "").trim()).filter(Boolean).join(" ");
@@ -98,7 +102,8 @@ EC.drawSheet = (ctx, st, s, img) => {
   y += 104;
 
   /* 4·5. 분위기 / 성격 — 다섯 칸 */
-  y += 20; rule(y); y += 52;
+  y += 20; area.me[3] = area.you[3] = y - 10; rule(y); y += 52;
+  area.tone = [M, y - 42, CW / 2 - 40]; area.persona = [colR - 20, y - 42, CW / 2 - 20];
   const fitOne = (t, max, px) => {                              // 한 줄에 안 들어가면 글자를 줄이고, 그래도 길면 …
     let s = px; font(500, s);
     while (s > 15 && ctx.measureText(t).width > max){ s -= 1; font(500, s); }
@@ -125,7 +130,8 @@ EC.drawSheet = (ctx, st, s, img) => {
   y += 50 + Math.max(1, tone.length, persona.length) * 46;
 
   /* 6. 캐릭터 디자인 */
-  y += 10; rule(y); y += 52;
+  y += 10; area.tone[3] = area.persona[3] = y - 10; rule(y); y += 52;
+  area.look = [M, y - 42, CW];
   label("캐릭터 디자인", M, y);
   const lt = EC.lookText(st);
   const items = [["외형", lt.silhouette], ["비율", lt.ratio], ["색", lt.color], ["선", lt.line], ["디테일", lt.detail], ["소품", lt.prop]];
@@ -142,7 +148,8 @@ EC.drawSheet = (ctx, st, s, img) => {
   }
 
   /* 6. 시장 훑어보기 */
-  y += 20; rule(y); y += 52;
+  y += 20; area.look[3] = y - 10; rule(y); y += 52;
+  area.market = [M, y - 42, CW];
   label("시장 훑어보기", M, y);
   const ageTxt = st.ages.includes("any") ? "상관없음" : st.ages.map(a => a.replace("이상", " 이상")).join(", ");
   const tagTxt = st.tags.map(EC.tagLabel || (t => t)).join(", ");
@@ -153,9 +160,10 @@ EC.drawSheet = (ctx, st, s, img) => {
   y += 90;
 
   /* 7. 대표 이미지 · 상품명 — 출시 화면 미리보기(PC)를 붙입니다 */
-  y += 10; rule(y); y += 52;
+  y += 10; area.market[3] = y - 10; rule(y); y += 52;
   label("대표 이미지 · 상품명", M, y);
   const boxY = y + 22, boxH = Math.max(120, H - 120 - boxY);
+  area.shop = [M, y - 42, CW, boxY + boxH + 14];
   if ((img || String(st.title || "").trim()) && EC.drawShop){
     const [sw, sh] = EC.SHOP_SIZE.pc, k = Math.min(CW / sw, boxH / sh);
     ctx.save();
@@ -171,6 +179,17 @@ EC.drawSheet = (ctx, st, s, img) => {
   /* 발 */
   text("litt.ly/1qssam", M, H - 60, 500, 20, MUTED);
   text("이모티콘 기획시트", W - M, H - 60, 500, 20, MUTED, "right");
+
+  /* 지금 적는 칸 강조: 크래프트색을 곱하기로 깔아서 글씨는 그대로 보이게 + 왼쪽 검정 막대 */
+  const a = hl && area[hl];
+  if (a && a[3]){
+    const [x, top, w, bot] = a, pad = 22;
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.fillStyle = "#efe6d8"; ctx.fillRect(x - pad, top, w + pad * 2, bot - top);
+    ctx.restore();
+    ctx.fillStyle = INK; ctx.fillRect(x - pad, top, 8, bot - top);
+  }
   ctx.restore();
 };
 

@@ -582,6 +582,9 @@ setInterval(() => {
 
 /* ── 오른쪽 기획시트 ── */
 let sheetTimer = null, sheetBusy = false, sheetAgain = false;
+/* 단계마다 오른쪽 기획시트에서 강조할 칸 (sheet.js의 area 이름) */
+const SHEET_AREA = { say: "say", role: "me", roleAdj: "me", who: "you", relAdj: "you",
+  tone: "tone", persona: "persona", look: "look", market: "market", mainimg: "shop", title: "shop" };
 /* 빨리 여러 번 바뀌어도 0.15초에 한 번은 새로 그립니다 */
 function queueSheet(){ if (!sheetTimer) sheetTimer = setTimeout(() => { sheetTimer = null; drawSheet(); }, 150); }
 async function drawSheet(){
@@ -595,7 +598,7 @@ async function drawSheet(){
   cv.style.width = cssW + "px";
   const s = cssW * (window.devicePixelRatio || 1) / EC.SHEET.W;
   cv.width = Math.round(EC.SHEET.W * s); cv.height = Math.round(EC.SHEET.H * s);
-  EC.drawSheet(cv.getContext("2d"), st, s, img);
+  EC.drawSheet(cv.getContext("2d"), st, s, img, intro ? null : SHEET_AREA[st.screen]);
   sheetBusy = false;
   if (sheetAgain){ sheetAgain = false; drawSheet(); }
 }
