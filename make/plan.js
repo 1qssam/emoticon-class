@@ -141,37 +141,50 @@ function bind(){
     $("plSize").textContent = `${L.width.toLocaleString()} × ${L.height.toLocaleString()}px`;
   };
 
-  /* 끌어서 순서 바꾸기 — 목록(위·아래 절반), 격자(왼쪽·오른쪽 절반) */
+  /* 끌어서 순서 바꾸기 — 목록(위·아래 절반), 격자(왼쪽·오른쪽 절반)
+     끄는 동안 dragover가 1초에 수십 번 와요. 칸 위치는 처음 한 번(스크롤이 바뀌면 다시)만 재고,
+     표시선은 자리가 바뀔 때만 옮겨서 느린 컴퓨터에서도 버벅이지 않게 해요. */
   const dropMove = (from, at) => { const to = from < at ? at - 1 : at; if (to !== from){ const [v] = p.items.splice(from, 1); p.items.splice(to, 0, v); save(); drawList(); drawGrid(); } };
-  const listAt = e => { const rows = [...$("plList").querySelectorAll(".pl-it")]; for (let i = 0; i < rows.length; i++){ const b = rows[i].getBoundingClientRect(); if (e.clientY < b.top + b.height / 2) return i; } return rows.length; };
-  const clearL = () => $("plList").querySelectorAll(".pl-it").forEach(li => li.classList.remove("before", "after"));
-  $("plList").addEventListener("dragover", e => {
-    if (!e.dataTransfer.types.includes("text/x-plan")) return;
-    e.preventDefault(); clearL();
-    const at = listAt(e), rows = $("plList").querySelectorAll(".pl-it");
-    if (at < rows.length) rows[at].classList.add("before"); else if (rows.length) rows[rows.length - 1].classList.add("after");
-  });
-  $("plList").addEventListener("dragleave", e => { if (!$("plList").contains(e.relatedTarget)) clearL(); });
-  $("plList").addEventListener("drop", e => { const f = e.dataTransfer.getData("text/x-plan"); if (f === "") return; e.preventDefault(); clearL(); dropMove(+f, listAt(e)); });
-  const gridAt = e => {
-    let best = null, bd = Infinity;
-    [...$("plGrid").querySelectorAll(".pl-cell")].forEach((c, i) => {
-      const b = c.getBoundingClientRect();
-      const dx = Math.max(b.left - e.clientX, 0, e.clientX - b.right), dy = Math.max(b.top - e.clientY, 0, e.clientY - b.bottom), d = dx * dx + dy * dy;
-      if (d < bd){ bd = d; best = { i, left: e.clientX < b.left + b.width / 2 }; }
+  const scrollKey = box => `${box.scrollTop},${box.scrollLeft},${$("main").scrollTop},${window.scrollY}`;
+  const dragZone = (box, itemSel, pick) => {
+    let rects = null, key = "", mark = null;
+    const items = () => box.querySelectorAll(itemSel);
+    const measure = () => { const k = scrollKey(box.closest(".pl-gridwrap") || box); if (!rects || k !== key){ rects = [...items()].map(el => el.getBoundingClientRect()); key = k; } return rects; };
+    const show = m => {
+      if (mark && m && mark.i === m.i && mark.cls === m.cls) return;
+      if (mark){ const el = items()[mark.i]; if (el) el.classList.remove(mark.cls); }
+      mark = m;
+      if (mark){ const el = items()[mark.i]; if (el) el.classList.add(mark.cls); }
+    };
+    const reset = () => { show(null); rects = null; };
+    box.addEventListener("dragover", e => {
+      if (!e.dataTransfer.types.includes("text/x-plan")) return;
+      e.preventDefault();
+      const r = pick(e, measure()); show(r.i >= 0 ? { i: r.i, cls: r.cls } : null);
     });
-    return best ? { at: best.left ? best.i : best.i + 1, i: best.i, left: best.left } : { at: 0, i: -1, left: true };
+    box.addEventListener("dragleave", e => {                    // 칸 안의 글자·네모 위를 지날 때도 오는 신호라, 정말 밖으로 나갔을 때만 지워요
+      const b = box.getBoundingClientRect();
+      if (e.clientX <= b.left || e.clientX >= b.right || e.clientY <= b.top || e.clientY >= b.bottom) reset();
+    });
+    box.addEventListener("drop", e => { const f = e.dataTransfer.getData("text/x-plan"); if (f === "") return; e.preventDefault(); const at = pick(e, measure()).at; reset(); dropMove(+f, at); });
+    box.addEventListener("dragend", reset);
+    return reset;
   };
-  const clearG = () => $("plGrid").querySelectorAll(".pl-cell").forEach(c => c.classList.remove("before", "after"));
-  $("plGrid").addEventListener("dragover", e => {
-    if (!e.dataTransfer.types.includes("text/x-plan")) return;
-    e.preventDefault(); clearG();
-    const [c0, c1] = $("plGrid").querySelectorAll(".pl-cell");   // 칸 사이 가로 간격의 절반 → 표시선을 한가운데에
-    if (c0 && c1) $("plGrid").style.setProperty("--gx", Math.max(0, c1.getBoundingClientRect().left - c0.getBoundingClientRect().right) / 2 + "px");
-    const g = gridAt(e); if (g.i >= 0) $("plGrid").querySelectorAll(".pl-cell")[g.i].classList.add(g.left ? "before" : "after");
+  dragZone($("plList"), ".pl-it", (e, rs) => {
+    const i = rs.findIndex(b => e.clientY < b.top + b.height / 2);
+    return i >= 0 ? { at: i, i, cls: "before" } : { at: rs.length, i: rs.length - 1, cls: "after" };
   });
-  $("plGrid").addEventListener("dragleave", e => { if (!$("plGrid").contains(e.relatedTarget)) clearG(); });
-  $("plGrid").addEventListener("drop", e => { const f = e.dataTransfer.getData("text/x-plan"); if (f === "") return; e.preventDefault(); clearG(); dropMove(+f, gridAt(e).at); });
+  let gx = "";
+  dragZone($("plGrid"), ".pl-cell", (e, rs) => {
+    const g = rs.length > 1 ? Math.max(0, rs[1].left - rs[0].right) / 2 + "px" : "";   // 칸 사이 가로 간격의 절반 → 표시선을 한가운데에
+    if (g && g !== gx){ gx = g; $("plGrid").style.setProperty("--gx", g); }
+    let best = -1, bd = Infinity, left = true;
+    rs.forEach((b, i) => {
+      const dx = Math.max(b.left - e.clientX, 0, e.clientX - b.right), dy = Math.max(b.top - e.clientY, 0, e.clientY - b.bottom), d = dx * dx + dy * dy;
+      if (d < bd){ bd = d; best = i; left = e.clientX < b.left + b.width / 2; }
+    });
+    return best < 0 ? { at: 0, i: -1 } : { at: left ? best : best + 1, i: best, cls: left ? "before" : "after" };
+  });
 
   /* 단추들 */
   $("plGoTitle").onclick = () => ui().go("title");
