@@ -12,6 +12,35 @@ EC.zoom = () => parseFloat(getComputedStyle(document.documentElement).getPropert
 const fitZoom = () => document.documentElement.style.setProperty("--z", Math.min(1, innerWidth / 1200).toFixed(3));
 fitZoom(); addEventListener("resize", fitZoom);
 
+/* 끌어서 순서 바꾸는 목록 공용 (10·11·12단계)
+   끄는 동안 dragover가 1초에 수십 번 와요. 칸 위치는 처음 한 번(스크롤이 바뀌면 다시)만 재고,
+   표시는 자리가 바뀔 때만 옮겨서 느린 컴퓨터에서도 버벅이지 않게 해요.
+   o.accept(e) 받을 끌기인지 / o.pick(e, 칸 위치들) → { mark: [번호, 표시 이름] 또는 없음, … } / o.drop(e, pick 결과) */
+EC.dragZone = (box, itemSel, o) => {
+  let rects = null, key = "", mark = null;
+  const items = () => box.querySelectorAll(itemSel);
+  const scrollKey = () => { let k = `${scrollX},${scrollY}`; for (let el = box; el; el = el.parentElement) if (el.scrollTop || el.scrollLeft) k += `,${el.scrollTop},${el.scrollLeft}`; return k; };
+  const measure = () => { const k = scrollKey(); if (!rects || k !== key){ rects = [...items()].map(el => el.getBoundingClientRect()); key = k; } return rects; };
+  const show = m => {
+    if (mark && m && mark[0] === m[0] && mark[1] === m[1]) return;
+    if (mark){ const el = items()[mark[0]]; if (el) el.classList.remove(mark[1]); }
+    mark = m || null;
+    if (mark){ const el = items()[mark[0]]; if (el) el.classList.add(mark[1]); }
+  };
+  const reset = () => { show(null); rects = null; };
+  box.addEventListener("dragover", e => {
+    if (!o.accept(e)) return;
+    e.preventDefault(); show(o.pick(e, measure()).mark);
+  });
+  box.addEventListener("dragleave", e => {           // 칸 안의 글자·그림 위를 지날 때도 오는 신호라, 정말 밖으로 나갔을 때만 지워요
+    const b = box.getBoundingClientRect();
+    if (e.clientX <= b.left || e.clientX >= b.right || e.clientY <= b.top || e.clientY >= b.bottom) reset();
+  });
+  box.addEventListener("drop", e => { if (!o.accept(e)) return; e.preventDefault(); const r = o.pick(e, measure()); reset(); o.drop(e, r); });
+  box.addEventListener("dragend", reset);
+  return reset;
+};
+
 EC.KEY = "ec-make-v1";           // 브라우저 저장 이름 (새 창의 기획시트도 이걸 읽습니다)
 
 /* 빈 작업 */

@@ -125,12 +125,14 @@ function bind(){
     return li.classList.contains("od-r") ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2;
   };
   const atOf = (e, li) => +li.dataset.i + (isAfter(e, li) ? 1 : 0);
-  const clear = () => document.querySelectorAll(".od .ins-b, .od .ins-a").forEach(li => li.classList.remove("ins-b", "ins-a"));
+  let marked = "";                                   // 같은 자리면 다시 표시하지 않아요 (끄는 동안 1초에 수십 번 불려서)
+  const clear = () => { marked = ""; document.querySelectorAll(".od .ins-b, .od .ins-a").forEach(li => li.classList.remove("ins-b", "ins-a")); };
   /* 같은 자리를 세 곳에 모두 표시 — 끌고 있는 곳은 커서가 있는 쪽(줄 끝 칸의 오른쪽도 그대로),
      나머지 두 곳은 at번 칸의 앞 (맨 뒤면 마지막 칸의 뒤) */
   const mark = (e, li) => {
-    clear();
-    const after = isAfter(e, li), at = atOf(e, li), here = li.closest("ol");
+    const after = isAfter(e, li), at = atOf(e, li), here = li.closest("ol"), k = `${li.dataset.i},${after},${areas.indexOf(here)}`;
+    if (k === marked) return;
+    clear(); marked = k;
     li.classList.add(after ? "ins-a" : "ins-b");
     const last = at >= ITEMS.length, i = last ? ITEMS.length - 1 : at;
     areas.filter(ol => ol !== here).forEach(ol => { const x = ol.querySelector(`[data-i="${i}"]`); if (x) x.classList.add(last ? "ins-a" : "ins-b"); });

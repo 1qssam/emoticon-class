@@ -158,11 +158,10 @@ function sourceOf(dt){
   const w = (dt.getData("text/x-kw") || "").trim();
   return w ? { type: "kw", w } : null;
 }
-/* 가리킨 곳 → 붙이기(줄 가운데) / 끼우기(줄 위·아래 가장자리) */
-function targetOf(e){
-  const lis = [...document.querySelectorAll("#clist .crow")];
+/* 가리킨 곳 → 붙이기(줄 가운데) / 끼우기(줄 위·아래 가장자리). lis = 줄마다 위치 (EC.dragZone이 재 둔 것) */
+function targetOf(e, lis){
   for (let i = 0; i < lis.length; i++){
-    const b = lis[i].getBoundingClientRect();
+    const b = lis[i];
     if (e.clientY < b.top) return { kind: "insert", at: i, mark: [i, "before"] };
     if (e.clientY <= b.bottom){
       const edge = Math.min(10, b.height * 0.28);
@@ -260,14 +259,15 @@ function bind(sc){
   /* 놓기 */
   const clist = $("clist"), types = e => [...e.dataTransfer.types];
   const ok = e => ["text/x-kw", "text/x-pc", "text/x-row"].some(t => types(e).includes(t));
-  const clear = () => clist.querySelectorAll(".crow").forEach(li => li.classList.remove("before", "after", "merge"));
-  clist.addEventListener("dragover", e => {
-    if (!ok(e)) return; e.preventDefault(); clear();
-    const t = targetOf(e), [i, how] = t.mark, lis = clist.querySelectorAll(".crow");
-    if (lis[i]) lis[i].classList.add(types(e).includes("text/x-row") && how === "merge" ? "after" : how);
+  EC.dragZone(clist, ".crow", {
+    accept: ok,
+    pick: (e, rs) => {
+      const t = targetOf(e, rs), [i, how] = t.mark;
+      t.mark = i >= 0 ? [i, types(e).includes("text/x-row") && how === "merge" ? "after" : how] : null;
+      return t;
+    },
+    drop: (e, t) => { const s = sourceOf(e.dataTransfer); if (s) dropOn(t, s); },
   });
-  clist.addEventListener("dragleave", e => { if (!clist.contains(e.relatedTarget)) clear(); });
-  clist.addEventListener("drop", e => { if (!ok(e)) return; e.preventDefault(); clear(); const s = sourceOf(e.dataTransfer); if (s) dropOn(targetOf(e), s); });
   const drop = $("cdrop");
   drop.ondragover = e => { if (ok(e)){ e.preventDefault(); drop.classList.add("over"); } };
   drop.ondragleave = () => drop.classList.remove("over");

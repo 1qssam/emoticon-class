@@ -251,17 +251,20 @@ function bind(){
     h.ondragstart = e => { e.dataTransfer.setData("text/x-fold", li.dataset.i); e.dataTransfer.effectAllowed = "move"; li.classList.add("dragging"); };
     h.ondragend = () => li.classList.remove("dragging");
   });
-  const at = e => { const rows = [...$("psList").querySelectorAll(".ps-fr")]; for (let k = 0; k < rows.length; k++){ const b = rows[k].getBoundingClientRect(); if (e.clientY < b.top + b.height / 2) return { k, above: true }; } return { k: rows.length - 1, above: false }; };
-  const clear = () => $("psList").querySelectorAll(".ps-fr").forEach(li => li.classList.remove("before", "after"));
-  $("psList").addEventListener("dragover", e => { if (!e.dataTransfer.types.includes("text/x-fold")) return; e.preventDefault(); clear(); const t = at(e), rows = $("psList").querySelectorAll(".ps-fr"); if (rows[t.k]) rows[t.k].classList.add(t.above ? "before" : "after"); });
-  $("psList").addEventListener("dragleave", e => { if (!$("psList").contains(e.relatedTarget)) clear(); });
-  $("psList").addEventListener("drop", e => {
-    const f = e.dataTransfer.getData("text/x-fold"); if (f === "") return;
-    e.preventDefault(); clear();
-    const t = at(e), rows = $("psList").querySelectorAll(".ps-fr"); if (!rows[t.k]) return;
-    const i = +rows[t.k].dataset.i;
-    const a = reversed() ? (t.above ? i + 1 : i) : (t.above ? i : i + 1), from = +f;
-    moveF(from, from < a ? a - 1 : a);
+  EC.dragZone($("psList"), ".ps-fr", {
+    accept: e => e.dataTransfer.types.includes("text/x-fold"),
+    pick: (e, rs) => {
+      let k = rs.findIndex(b => e.clientY < b.top + b.height / 2), above = true;
+      if (k < 0){ k = rs.length - 1; above = false; }
+      return { k, above, mark: k >= 0 ? [k, above ? "before" : "after"] : null };
+    },
+    drop: (e, t) => {
+      const f = e.dataTransfer.getData("text/x-fold"), rows = $("psList").querySelectorAll(".ps-fr");
+      if (f === "" || !rows[t.k]) return;
+      const i = +rows[t.k].dataset.i;
+      const a = reversed() ? (t.above ? i + 1 : i) : (t.above ? i : i + 1), from = +f;
+      moveF(from, from < a ? a - 1 : a);
+    },
   });
   $("psGet").onclick = async () => {
     const b = $("psGet");
