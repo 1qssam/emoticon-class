@@ -7,6 +7,11 @@
 const EC = window.EC = {};
 const C = window.EC_CONFIG;
 
+/* 화면 줄이기: 1200px보다 좁으면 전체를 그 폭에 맞게 줄여요 (make.css의 --z) */
+EC.zoom = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--z")) || 1;
+const fitZoom = () => document.documentElement.style.setProperty("--z", Math.min(1, innerWidth / 1200).toFixed(3));
+fitZoom(); addEventListener("resize", fitZoom);
+
 EC.KEY = "ec-make-v1";           // 브라우저 저장 이름 (새 창의 기획시트도 이걸 읽습니다)
 
 /* 빈 작업 */

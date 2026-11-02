@@ -308,7 +308,7 @@ function bind(sc){
   split.onpointerdown = e => {
     e.preventDefault(); split.setPointerCapture(e.pointerId);
     const sx = e.clientX, sw = box.querySelector(".cpanel").offsetWidth;
-    split.onpointermove = ev => { cw = Math.round(Math.min(760, Math.max(300, sw - (ev.clientX - sx)))); box.style.setProperty("--cw", cw + "px"); };
+    split.onpointermove = ev => { cw = Math.round(Math.min(760, Math.max(300, sw - (ev.clientX - sx) / EC.zoom()))); box.style.setProperty("--cw", cw + "px"); };
     split.onpointerup = () => { split.onpointermove = split.onpointerup = null; try { localStorage.setItem("ec-compose-cw", cw); } catch (err) {} };
   };
   split.ondblclick = () => { cw = null; box.style.removeProperty("--cw"); try { localStorage.removeItem("ec-compose-cw"); } catch (err) {} };

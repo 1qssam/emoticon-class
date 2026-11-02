@@ -11,7 +11,8 @@ body{background:var(--paper);color:var(--ink);
 button{font-family:inherit}
 button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 
-.wrap{padding:18px 28px 18px;height:100vh;display:flex;flex-direction:column;min-width:1200px}
+/* 화면이 1200px보다 좁으면(노트북·화면 배율 125% 등) 배치는 그대로 두고 전체를 줄여요. --z는 core.js가 넣어요 */
+.wrap{padding:18px 28px 18px;height:calc(100vh / var(--z,1));display:flex;flex-direction:column;min-width:1200px;zoom:var(--z,1)}
 header{display:flex;align-items:baseline;gap:16px;margin-bottom:16px;flex:none}
 header h1{font-size:26px;font-weight:700;margin:0}
 header .brand{font-size:16px;color:var(--muted)}
@@ -21,7 +22,7 @@ header .by a{color:var(--muted)}
 
 /* 왼쪽 단계 · 가운데 질문 · 오른쪽 기획시트 */
 /* 오른쪽 기획시트 칸은 A4 한 장이 들어갈 만큼만 (높이 × 0.707) */
-.app{display:grid;grid-template-columns:clamp(230px,15vw,290px) minmax(0,1fr) clamp(360px,calc((100vh - 367px) * 0.7072 + 34px),640px);gap:22px;flex:1;min-height:0}
+.app{display:grid;grid-template-columns:clamp(230px,15vw,290px) minmax(0,1fr) clamp(360px,calc((100vh / var(--z,1) - 367px) * 0.7072 + 34px),640px);gap:22px;flex:1;min-height:0}
 .app > *{min-height:0}
 
 .box{border:1px solid var(--line);border-radius:14px;background:#fff}

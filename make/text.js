@@ -307,7 +307,7 @@ async function drawStage(){
   await ensureFonts(list);
   const fit = document.body.classList.contains("fit");
   const maxW = stage.clientWidth - 24;
-  const maxH = fit ? stage.clientHeight - 24 : Math.max(320, window.innerHeight - stage.getBoundingClientRect().top - 40);
+  const maxH = fit ? stage.clientHeight - 24 : Math.max(320, (window.innerHeight - stage.getBoundingClientRect().top - 40) / EC.zoom());
   const s = Math.max(0.05, Math.min(maxW / SRC.W, maxH / SRC.H, 2)), dpr = window.devicePixelRatio || 1;
   view.s = s;
   cv.style.width = Math.round(SRC.W * s) + "px"; cv.style.height = Math.round(SRC.H * s) + "px";
@@ -423,7 +423,7 @@ function bind(){
   bindEditor();
   /* 그림 위에서: 글씨 모드 = 글씨 고르기·끌기 / 그림 옮기기 모드 = 그림 끌기 */
   const cv = $("txCv");
-  const pt = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / view.s, y: (e.clientY - r.top) / view.s }; };
+  const pt = e => { const r = cv.getBoundingClientRect(), z = EC.zoom(); return { x: (e.clientX - r.left) / z / view.s, y: (e.clientY - r.top) / z / view.s }; };
   const hit = p => { for (let i = list.length - 1; i >= 0; i--){ const b = textBox(list[i]), q = unrotate(list[i], b, p); if (q.x >= b.x && q.x <= b.x + b.w && q.y >= b.y && q.y <= b.y + b.h) return i; } return -1; };
   const onHandle = p => { const T = list[sel]; if (!T || mode !== "text") return false; const h = handlePos(T, textBox(T), view.s); return Math.hypot(p.x - h.x, p.y - h.y) <= (HR + 4) / view.s; };
   let drag = null;
