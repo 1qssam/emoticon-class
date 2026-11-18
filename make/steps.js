@@ -368,7 +368,7 @@ let TAG_LIST = null, TAG_ERR = false, tagLoading = false;
 function loadTags(){
   if (TAG_LIST || tagLoading) return;
   const build = () => {
-    const cnt = {};
+    const cnt = Object.assign({}, (window.TAGS || {}).counts || {});   // 11/18부터 공개 파일엔 태그 이름·횟수만
     Object.values((window.TAGS || {}).items || {}).forEach(v => (v.t || []).forEach(([t]) => { cnt[t] = (cnt[t] || 0) + 1; }));
     TAG_LIST = EC.tagSort(Object.keys(cnt).filter(t => !EC.tagHidden(t)), cnt);
     if (st.screen === "market") rerender();

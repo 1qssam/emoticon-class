@@ -113,7 +113,7 @@ window.EC_CONFIG = {
       ],
       minutes: 10,
       go: "이모티콘 시장 조사하러 가기",
-      link: "https://1qssam.github.io/emoticon-rank/market.html" },
+      link: "https://e.kakao.com/" },   // 11/18 market.html 닫음 → 카카오 이모티콘샵으로
 
     { id: "sketch", step: 7, name: "캐릭터 스케치", type: "sketch", recap: true, recapBelow: true,
       q: "지금까지 정한 내용을 보며, [{say}] 이모티콘에 쓸 캐릭터를 스케치해봅시다.",
